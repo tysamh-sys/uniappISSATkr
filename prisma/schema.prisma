@@ -1,0 +1,366 @@
+// Prisma Schema for University Attendance & Absence Management System
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  TEACHER
+  STUDENT
+}
+
+enum TimetableVersionStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+enum AttendanceSessionStatus {
+  SCHEDULED
+  OPEN
+  SUBMITTED
+  LATE
+  CANCELLED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  JUSTIFIED
+  LATE
+}
+
+enum CertificateStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  role         Role      @default(TEACHER)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  teacher       Teacher?
+  student       Student?
+  notifications Notification[]
+
+  @@map("users")
+}
+
+model Teacher {
+  id            String    @id @default(uuid())
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teacherNumber String    @unique
+  firstName     String
+  lastName      String
+  email         String    @unique
+  phone         String?
+  department    String?   @default("Informatique")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  timetableEntries       TimetableEntry[]
+  attendanceSessions     AttendanceSession[]
+  administrativeRequests AdministrativeRequest[]
+  announcements          Announcement[]
+
+  @@map("teachers")
+}
+
+model Class {
+  id        String   @id @default(uuid())
+  name      String   @unique // e.g. "2CS", "1CS", "3SE", "ING2-B"
+  code      String   @unique
+  filiere   String?  @default("Informatique")
+  niveau    String?  @default("L3")
+  groupe    String?  @default("G1")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  students           Student[]
+  timetableEntries   TimetableEntry[]
+  attendanceSessions AttendanceSession[]
+  announcements      Announcement[]
+
+  @@map("classes")
+}
+
+model Student {
+  id            String   @id @default(uuid())
+  userId        String?  @unique
+  user          User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studentNumber String   @unique
+  firstName     String
+  lastName      String
+  email         String?
+  filiere       String?  @default("Informatique")
+  niveau        String?  @default("L3")
+  groupe        String?  @default("G1")
+  classId       String
+  class         Class    @relation(fields: [classId], references: [id], onDelete: Restrict)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  attendanceRecords AttendanceRecord[]
+  certificates      Certificate[]
+  announcementReads AnnouncementRead[]
+
+  @@map("students")
+}
+
+model Subject {
+  id        String   @id @default(uuid())
+  code      String   @unique // e.g. "WEB101", "NET201"
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  timetableEntries   TimetableEntry[]
+  attendanceSessions AttendanceSession[]
+  announcements      Announcement[]
+
+  @@map("subjects")
+}
+
+model Room {
+  id        String   @id @default(uuid())
+  name      String   @unique // e.g. "B12", "B14", "Lab 3"
+  building  String?
+  capacity  Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  timetableEntries   TimetableEntry[]
+  attendanceSessions AttendanceSession[]
+
+  @@map("rooms")
+}
+
+model TimetableVersion {
+  id         String                 @id @default(uuid())
+  name       String                 // e.g. "Semester 1 2026/2027"
+  validFrom  DateTime
+  validUntil DateTime
+  status     TimetableVersionStatus @default(DRAFT)
+  createdAt  DateTime               @default(now())
+  updatedAt  DateTime               @updatedAt
+
+  entries TimetableEntry[]
+
+  @@map("timetable_versions")
+}
+
+model TimetableEntry {
+  id                 String           @id @default(uuid())
+  timetableVersionId String
+  timetableVersion   TimetableVersion @relation(fields: [timetableVersionId], references: [id], onDelete: Cascade)
+  dayOfWeek          DayOfWeek
+  startTime          String           // "HH:mm" format (24-hour)
+  endTime            String           // "HH:mm" format (24-hour)
+  teacherId          String
+  teacher            Teacher          @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+  classId            String
+  class              Class            @relation(fields: [classId], references: [id], onDelete: Restrict)
+  subjectId          String
+  subject            Subject          @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  roomId             String
+  room               Room             @relation(fields: [roomId], references: [id], onDelete: Restrict)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  attendanceSessions AttendanceSession[]
+
+  @@index([teacherId, dayOfWeek, startTime, endTime])
+  @@index([classId, dayOfWeek, startTime, endTime])
+  @@index([roomId, dayOfWeek, startTime, endTime])
+  @@map("timetable_entries")
+}
+
+model AbsenceReason {
+  id            String   @id @default(uuid())
+  name          String   @unique // e.g. "Medical", "Personal", "Administrative", "Unknown"
+  description   String?
+  requiresProof Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  attendanceRecords AttendanceRecord[]
+
+  @@map("absence_reasons")
+}
+
+model AttendanceSession {
+  id               String                  @id @default(uuid())
+  reference        String?                 @unique // e.g. "ATT-250318-042"
+  timetableEntryId String?
+  timetableEntry   TimetableEntry?         @relation(fields: [timetableEntryId], references: [id], onDelete: SetNull)
+  date             DateTime                // YYYY-MM-DD
+  teacherId        String
+  teacher          Teacher                 @relation(fields: [teacherId], references: [id], onDelete: Restrict)
+  classId          String
+  class            Class                   @relation(fields: [classId], references: [id], onDelete: Restrict)
+  subjectId        String
+  subject          Subject                 @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  roomId           String
+  room             Room                    @relation(fields: [roomId], references: [id], onDelete: Restrict)
+  startTime        String                  // "HH:mm"
+  endTime          String                  // "HH:mm"
+  status           AttendanceSessionStatus @default(SCHEDULED)
+  submittedAt      DateTime?
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+
+  records AttendanceRecord[]
+
+  @@unique([timetableEntryId, date])
+  @@map("attendance_sessions")
+}
+
+model AttendanceRecord {
+  id              String           @id @default(uuid())
+  sessionId       String
+  session         AttendanceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  studentId       String
+  student         Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  status          AttendanceStatus @default(PRESENT)
+  absenceReasonId String?
+  absenceReason   AbsenceReason?   @relation(fields: [absenceReasonId], references: [id], onDelete: SetNull)
+  certificateId   String?
+  certificate     Certificate?     @relation(fields: [certificateId], references: [id], onDelete: SetNull)
+  remarks         String?
+  note            String?
+  recordedAt      DateTime         @default(now())
+
+  @@unique([sessionId, studentId])
+  @@map("attendance_records")
+}
+
+model Certificate {
+  id               String            @id @default(uuid())
+  reference        String?           @unique // e.g. "JUS-250318-018"
+  studentId        String
+  student          Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  medicalCenter    String?
+  reason           String?
+  fileName         String
+  fileType         String
+  fileSize         Int
+  dataUrl          String?           @db.Text
+  startDate        DateTime
+  endDate          DateTime
+  status           CertificateStatus @default(PENDING)
+  uploadedByUserId String?
+  reviewedByUserId String?
+  reviewedAt       DateTime?
+  reviewNote       String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  records          AttendanceRecord[]
+
+  @@map("certificates")
+}
+
+model Activity {
+  id             String   @id @default(uuid())
+  kind           String
+  message        String
+  actorUserId    String
+  subjectUserIds String[]
+  createdAt      DateTime @default(now())
+
+  @@map("activities")
+}
+
+model AdministrativeRequest {
+  id          String        @id @default(uuid())
+  reference   String        @unique // e.g. "REQ-2041", "REQ-1998"
+  teacherId   String
+  teacher     Teacher       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  type        String        // e.g. "Signaler une absence prévue", "Modification de séance"
+  date        DateTime      // Target date concerned
+  reason      String        @db.Text
+  status      RequestStatus @default(PENDING)
+  reviewedAt  DateTime?
+  reviewNote  String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@map("administrative_requests")
+}
+
+model Announcement {
+  id          String   @id @default(uuid())
+  title       String
+  message     String   @db.Text
+  teacherId   String
+  teacher     Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  classId     String?
+  class       Class?   @relation(fields: [classId], references: [id], onDelete: SetNull)
+  subjectId   String?
+  subject     Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  reads       AnnouncementRead[]
+
+  @@map("announcements")
+}
+
+model AnnouncementRead {
+  id             String       @id @default(uuid())
+  announcementId String
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  studentId      String
+  student        Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  readAt         DateTime     @default(now())
+
+  @@unique([announcementId, studentId])
+  @@map("announcement_reads")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String   @db.Text
+  type      String   @default("info") // "schedule" | "attendance" | "certificate" | "announcement" | "admin"
+  icon      String?  @default("bell") // "megaphone" | "check" | "calendar" | "clock" | "file"
+  isRead    Boolean  @default(false)
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}

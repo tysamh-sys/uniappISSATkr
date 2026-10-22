@@ -1,0 +1,60 @@
+# Dependencies
+node_modules/
+/.pnp
+.pnp.js
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+
+# Keep example environment files
+!.env.example
+
+# Build outputs
+dist/
+build/
+web-build/
+out/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Coverage directory
+coverage/
+*.lcov
+
+# TypeScript cache
+*.tsbuildinfo
+.tscache/
+
+# Vite / Expo / Cache
+.vite/
+.expo/
+.cache/
+
+# Mobile keys and certs
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.idea/
+
+# Temporary and backup files
+original_seed_backup_*.txt
+*.orig.*
+*.backup*
