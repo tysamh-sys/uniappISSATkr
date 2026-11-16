@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef, useEffect } from "react";
+import React, { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -13,14 +13,21 @@ import {
   Animated,
   Easing,
   KeyboardAvoidingView,
+  useColorScheme,
+  useWindowDimensions,
+  StyleProp,
+  ViewStyle,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons, Feather } from "@expo/vector-icons";
 
+/* ==========================================================================
+   TYPES & CONSTANTS
+   ========================================================================== */
 type Role = "student" | "teacher";
 type Theme = "light" | "dark" | "system";
-type Lang = "fr" | "en";
+type Lang = "fr" | "en" | "ar";
 type Screen =
   | "login"
   | "home"
@@ -45,47 +52,230 @@ const copy = {
     attendance: "Présences",
     profile: "Profil",
     today: "Aujourd’hui",
+    todaysSchedule: "Votre journée",
     next: "Prochain cours",
     notifications: "Notifications",
     synced: "Synchronisé",
     offline: "Hors ligne",
     classes: "cours",
+    viewAll: "Voir tout",
+    quickActions: "Accès rapide",
+    viewTimetable: "Emploi du temps",
+    manageAttendance: "Présences",
+    announcements: "Annonces",
+    settings: "Réglages",
+    attendanceRate: "Taux de présence",
+    confirmedRate: "sur l'ensemble des cours",
+    in12min: "Dans 12 min",
   },
   en: {
     home: "Home",
-    timetable: "Timetable",
+    timetable: "Schedule",
     attendance: "Attendance",
     profile: "Profile",
     today: "Today",
-    next: "Next class",
+    todaysSchedule: "Today's Schedule",
+    next: "Next Class",
     notifications: "Notifications",
     synced: "Synced",
     offline: "Offline",
     classes: "classes",
+    viewAll: "View All",
+    quickActions: "Quick Actions",
+    viewTimetable: "View Timetable",
+    manageAttendance: "Attendance",
+    announcements: "Announcements",
+    settings: "Settings",
+    attendanceRate: "Attendance Today",
+    confirmedRate: "overall confirmed attendance",
+    in12min: "In 12 min",
+  },
+  ar: {
+    home: "الرئيسية",
+    timetable: "جدول الأوقات",
+    attendance: "الحضور",
+    profile: "الملف الشخصي",
+    today: "اليوم",
+    todaysSchedule: "جدول اليوم",
+    next: "الحصة القادمة",
+    notifications: "الإشعارات",
+    synced: "متزامن",
+    offline: "غير متصل",
+    classes: "حصص",
+    viewAll: "عرض الكل",
+    quickActions: "وصول سريع",
+    viewTimetable: "جدول الأوقات",
+    manageAttendance: "تسجيل الحضور",
+    announcements: "الإعلانات",
+    settings: "الإعدادات",
+    attendanceRate: "نسبة الحضور",
+    confirmedRate: "من إجمالي الحصص",
+    in12min: "خلال 12 دقيقة",
   },
 };
 
+const buttonCopy = {
+  fr: {
+    signIn: "Se connecter",
+    connecting: "Connexion en cours…",
+    signOut: "Se déconnecter",
+    forgotPassword: "Mot de passe oublié ?",
+    student: "Étudiant",
+    teacher: "Enseignant",
+    portalTitle: "Portail Universitaire",
+    portalSubtitle: "Portail Universitaire · Gestion des présences",
+    institutionalId: "Identifiant institutionnel",
+    password: "Mot de passe",
+    secureAccess: "Accès sécurisé réservé aux membres de l’ISSATK",
+    institutionName: "Institut Supérieur des Sciences Appliquées et de Technologie de Kairouan",
+    confirm: "Confirmer",
+    cancel: "Annuler",
+    done: "Compris",
+  },
+  en: {
+    signIn: "Sign In",
+    connecting: "Connecting…",
+    signOut: "Sign Out",
+    forgotPassword: "Forgot password?",
+    student: "Student",
+    teacher: "Teacher",
+    portalTitle: "University Portal",
+    portalSubtitle: "University Portal · Attendance Management",
+    institutionalId: "Institutional ID",
+    password: "Password",
+    secureAccess: "Restricted secure access for ISSATK members",
+    institutionName: "Higher Institute of Applied Sciences and Technology of Kairouan",
+    confirm: "Confirm",
+    cancel: "Cancel",
+    done: "Got it",
+  },
+  ar: {
+    signIn: "تسجيل الدخول",
+    connecting: "جارٍ الاتصال…",
+    signOut: "تسجيل الخروج",
+    forgotPassword: "نسيت كلمة المرور؟",
+    student: "طالب",
+    teacher: "أستاذ",
+    portalTitle: "البوابة الجامعية",
+    portalSubtitle: "البوابة الجامعية · إدارة الحضور والغياب",
+    institutionalId: "المعرف الجامعي",
+    password: "كلمة المرور",
+    secureAccess: "ولوج آمن خاص بأسرة المعهد العالي للعلوم التطبيقية والتكنولوجيا بالقيروان",
+    institutionName: "المعهد العالي للعلوم التطبيقية والتكنولوجيا بالقيروان",
+    confirm: "تأكيد",
+    cancel: "إلغاء",
+    done: "موافق",
+  },
+};
+
+/* ==========================================================================
+   HERITAGE NAVY DESIGN SYSTEM PALETTE
+   Light Mode & Dedicated Deep Navy Dark Mode
+   ========================================================================== */
 const getColors = (isDark: boolean) => ({
-  primary: isDark ? "#8ab4e1" : "#123865",
-  primaryStrong: isDark ? "#b3d2f1" : "#0b294d",
-  primarySoft: isDark ? "#182e47" : "#eaf1f9",
-  surface: isDark ? "#121a24" : "#ffffff",
-  surfaceMuted: isDark ? "#18222e" : "#f5f7f9",
-  surfaceRaised: isDark ? "#1c2733" : "#ffffff",
-  text: isDark ? "#eef3f8" : "#152234",
-  textSecondary: isDark ? "#a8b5c4" : "#607083",
-  border: isDark ? "#2c3947" : "#dfe5eb",
-  success: isDark ? "#67bd92" : "#287454",
-  successSoft: isDark ? "#16362b" : "#eaf6f0",
-  danger: isDark ? "#ee8990" : "#b33c45",
-  dangerSoft: isDark ? "#412326" : "#fbecee",
-  warning: isDark ? "#e9b75f" : "#9b6715",
-  warningSoft: isDark ? "#392f1e" : "#fff5dc",
-  info: isDark ? "#81b8e7" : "#28649b",
-  infoSoft: isDark ? "#1b3349" : "#eaf3fb",
-  background: isDark ? "#0c121a" : "#f0f2f5",
+  // Identity Colors
+  primary: isDark ? "#7FAFE5" : "#102B55",
+  primaryNavy: "#102B55",
+  primaryStrong: isDark ? "#174A83" : "#102B55",
+  primarySoft: isDark ? "#163259" : "#EBF1F8",
+  secondary: isDark ? "#9FBCE0" : "#174A83",
+  secondaryBlue: "#174A83",
+
+  // Accent Gold
+  accent: "#E9B544",
+  accentSoft: isDark ? "#352A14" : "#FEF4D9",
+  accentText: isDark ? "#F3C55E" : "#B88714",
+
+  // Backgrounds & Surfaces
+  background: isDark ? "#081A33" : "#F4F7FB",
+  surface: isDark ? "#142F52" : "#FFFFFF",
+  surfaceMuted: isDark ? "#102B55" : "#EDF2F8",
+  surfaceRaised: isDark ? "#1B3A60" : "#FFFFFF",
+  card: isDark ? "#142F52" : "#FFFFFF",
+
+  // Typography
+  text: isDark ? "#F4F7FB" : "#17263D",
+  textSecondary: isDark ? "#B5C3D6" : "#748197",
+  textMuted: isDark ? "#8CA0BA" : "#9AA8BC",
+
+  // Structural Borders
+  border: isDark ? "#294568" : "#E4EAF1",
+  borderSubtle: isDark ? "rgba(41, 69, 104, 0.6)" : "rgba(228, 234, 241, 0.8)",
+
+  // Status Colors
+  success: isDark ? "#2ED389" : "#22A06B",
+  successSoft: isDark ? "#0F3A29" : "#EAF7EE",
+  warning: isDark ? "#E9B544" : "#E8A23A",
+  warningSoft: isDark ? "#3A2E12" : "#FEF4E8",
+  danger: isDark ? "#FF6B6B" : "#DC5555",
+  dangerSoft: isDark ? "#411B20" : "#FDECEE",
+  info: isDark ? "#4BA0F2" : "#174A83",
+  infoSoft: isDark ? "#163A63" : "#EAF2FA",
+
+  // Bottom Navigation
+  navBackground: isDark ? "#081A33" : "#102B55",
+  navActive: "#E9B544",
+  navInactive: isDark ? "#8CA0BA" : "rgba(255, 255, 255, 0.65)",
+  navActiveBg: isDark ? "rgba(233, 181, 68, 0.16)" : "rgba(233, 181, 68, 0.18)",
 });
 
+type ThemeColors = ReturnType<typeof getColors>;
+
+/* ==========================================================================
+   MICRO-INTERACTIONS & ANIMATED PRIMITIVES
+   ========================================================================== */
+
+/** Tactile press feedback with spring scale */
+function PressableScale({
+  onPress,
+  children,
+  style,
+  disabled,
+  activeScale = 0.96,
+}: {
+  onPress?: () => void;
+  children: React.ReactNode;
+  style?: any;
+  disabled?: boolean;
+  activeScale?: number;
+}) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scale, {
+      toValue: activeScale,
+      useNativeDriver: true,
+      speed: 40,
+      bounciness: 0,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scale, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 35,
+      bounciness: 4,
+    }).start();
+  };
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.88}
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      disabled={disabled}
+      style={style}
+    >
+      <Animated.View style={{ transform: [{ scale }] }}>
+        {children}
+      </Animated.View>
+    </TouchableOpacity>
+  );
+}
+
+/** Vector Icons */
 function AppIcon({
   name,
   size = 20,
@@ -95,7 +285,7 @@ function AppIcon({
   size?: number;
   color?: string;
 }) {
-  const iconColor = color || "#152234";
+  const iconColor = color || "#17263D";
 
   switch (name) {
     case "home":
@@ -150,12 +340,25 @@ function AppIcon({
       return <Feather name="info" size={size} color={iconColor} />;
     case "checkCircle":
       return <Feather name="check-circle" size={size} color={iconColor} />;
+    case "users":
+      return <Feather name="users" size={size} color={iconColor} />;
+    case "barChart":
+      return <Feather name="bar-chart-2" size={size} color={iconColor} />;
+    case "mail":
+      return <Feather name="mail" size={size} color={iconColor} />;
+    case "arrowRight":
+      return <Feather name="arrow-right" size={size} color={iconColor} />;
+    case "arrowLeft":
+      return <Feather name="arrow-left" size={size} color={iconColor} />;
+    case "login":
+      return <Feather name="log-in" size={size} color={iconColor} />;
     case "more":
     default:
       return <Feather name="more-horizontal" size={size} color={iconColor} />;
   }
 }
 
+/** Status Badge */
 function StatusBadge({
   state,
   label,
@@ -163,64 +366,158 @@ function StatusBadge({
 }: {
   state: "success" | "danger" | "warning" | "info" | "neutral";
   label: string;
-  colors: ReturnType<typeof getColors>;
+  colors: ThemeColors;
 }) {
   let bg = colors.surfaceMuted;
   let text = colors.textSecondary;
+  let dot = colors.textSecondary;
+
   if (state === "success") {
     bg = colors.successSoft;
     text = colors.success;
+    dot = colors.success;
   } else if (state === "danger") {
     bg = colors.dangerSoft;
     text = colors.danger;
+    dot = colors.danger;
   } else if (state === "warning") {
     bg = colors.warningSoft;
     text = colors.warning;
+    dot = colors.warning;
   } else if (state === "info") {
     bg = colors.infoSoft;
     text = colors.info;
+    dot = colors.info;
   }
 
   return (
     <View style={[styles.badge, { backgroundColor: bg }]}>
+      <View style={[styles.badgeDot, { backgroundColor: dot }]} />
       <Text style={[styles.badgeText, { color: text }]}>{label}</Text>
     </View>
   );
 }
 
-function Logo({ colors }: { colors: ReturnType<typeof getColors> }) {
-  const [failed, setFailed] = useState(false);
+/** Official ISSATKR Logo Component — Reusing the Authentic Institutional Logo Asset */
+function IssatLogo({
+  colors,
+  isDark,
+  size = "md",
+  style,
+}: {
+  colors: ThemeColors;
+  isDark: boolean;
+  size?: "sm" | "md" | "lg" | "xl";
+  style?: StyleProp<ViewStyle>;
+}) {
+  const dimensions = {
+    sm: { width: 96, height: 35, radius: 8 },
+    md: { width: 126, height: 46, radius: 10 },
+    lg: { width: 170, height: 62, radius: 12 },
+    xl: { width: 220, height: 80, radius: 14 },
+  }[size];
 
   return (
     <View
       style={[
-        styles.logoContainer,
         {
-          backgroundColor: "#ffffff",
-          borderColor: colors.border,
+          width: dimensions.width,
+          height: dimensions.height,
+          backgroundColor: "#FFFFFF",
+          borderRadius: dimensions.radius,
+          borderWidth: 1,
+          borderColor: isDark ? "rgba(255, 255, 255, 0.18)" : "rgba(16, 43, 85, 0.10)",
+          alignItems: "center",
+          justifyContent: "center",
+          overflow: "hidden",
+          paddingHorizontal: 4,
+          paddingVertical: 2,
+          shadowColor: isDark ? "#000000" : "#102B55",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: isDark ? 0.35 : 0.08,
+          shadowRadius: 4,
+          elevation: 2,
         },
+        style,
       ]}
     >
-      {failed ? (
-        <View style={styles.logoPlaceholder}>
-          <Text style={[styles.logoPlaceholderText, { color: colors.primary }]}>
-            ISSAT Kairouan
-          </Text>
-        </View>
-      ) : (
-        <Image
-          source={require("./assets/issatk_logo.jpg")}
-          defaultSource={{ uri: logoUrl }}
-          style={styles.brandLogo}
-          resizeMode="contain"
-          onError={() => setFailed(true)}
+      <Image
+        source={require("./assets/issatk_logo.jpg")}
+        style={{ width: "100%", height: "100%" }}
+        resizeMode="contain"
+      />
+    </View>
+  );
+}
+
+/**
+ * ArchitecturalHeaderBackground — CORRECTED SIZE & BLENDING
+ * Prominent visual element in the upper-right section:
+ * - Occupies ~46–50% of screen width, adapting to device.
+ * - Extends from top: 0 down to ~285px.
+ * - Building facade, pillars, arches, and palm trees clearly visible.
+ * - Soft multi-step gradient masks on left and bottom eliminate rectangular edges.
+ * - Stationary independent layer behind ScrollView (does not scroll with content).
+ * - Touch interactions pass through seamlessly (pointerEvents="none").
+ */
+function ArchitecturalHeaderBackground({
+  isDark,
+  colors,
+}: {
+  isDark: boolean;
+  colors: ThemeColors;
+}) {
+  const { width: screenWidth } = useWindowDimensions();
+  // Image occupies approximately 72–75% of device screen width
+  const bgWidth = Math.round(screenWidth * 0.74);
+
+  return (
+    <View
+      pointerEvents="none"
+      style={[
+        styles.archBgWrap,
+        { width: bgWidth },
+      ]}
+    >
+      {/* 1. University Architectural Photograph */}
+      <Image
+        source={require("./assets/issat_building.jpg")}
+        style={[
+          styles.archBgImage,
+          {
+            width: Math.round(screenWidth * 1.18),
+            opacity: isDark ? 0.60 : 0.95,
+          },
+        ]}
+        resizeMode="cover"
+      />
+
+      {/* 2. Wide, Soft Atmospheric Feathering Mist (Continuous 2D Hermite curves, No Bands, Seamless Edge Dissolve) */}
+      <Image
+        source={require("./assets/mist_feather_mask.png")}
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            tintColor: colors.background,
+          },
+        ]}
+        resizeMode="stretch"
+      />
+
+      {/* 3. Dark Mode Ambient Navy Depth Tint */}
+      {isDark && (
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            { backgroundColor: "#081A33", opacity: 0.28 },
+          ]}
         />
       )}
     </View>
   );
 }
 
-// Lightweight, smooth screen transition wrapper
+/** Lightweight screen transition wrapper */
 function ScreenTransition({
   screenKey,
   children,
@@ -244,6 +541,7 @@ function ScreenTransition({
     <Animated.View
       style={{
         flex: 1,
+        backgroundColor: "transparent",
         opacity: anim.interpolate({
           inputRange: [0, 1],
           outputRange: [0.35, 1],
@@ -263,7 +561,7 @@ function ScreenTransition({
   );
 }
 
-// Gentle subtle fade transition for tabs and filter state updates
+/** Gentle subtle fade transition for tabs and filter updates */
 function SubtleFadeTransition({
   triggerKey,
   children,
@@ -297,7 +595,7 @@ function SubtleFadeTransition({
   );
 }
 
-// Smooth animated dialog modal for confirmations and information
+/** Smooth animated dialog modal */
 function SmoothDialog({
   visible,
   onClose,
@@ -316,7 +614,7 @@ function SmoothDialog({
   confirmText?: string;
   cancelText?: string;
   onConfirm?: () => void;
-  colors: ReturnType<typeof getColors>;
+  colors: ThemeColors;
   icon?: string;
 }) {
   const anim = useRef(new Animated.Value(0)).current;
@@ -326,11 +624,11 @@ function SmoothDialog({
     if (visible) {
       setRendered(true);
       anim.setValue(0);
-      Animated.timing(anim, {
+      Animated.spring(anim, {
         toValue: 1,
-        duration: 180,
-        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
+        speed: 26,
+        bounciness: 3,
       }).start();
     } else {
       Animated.timing(anim, {
@@ -358,7 +656,7 @@ function SmoothDialog({
             {
               opacity: anim.interpolate({
                 inputRange: [0, 1],
-                outputRange: [0, 0.52],
+                outputRange: [0, 0.58],
               }),
             },
           ]}
@@ -383,7 +681,7 @@ function SmoothDialog({
                 {
                   scale: anim.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [0.93, 1],
+                    outputRange: [0.92, 1],
                   }),
                 },
               ],
@@ -396,7 +694,7 @@ function SmoothDialog({
               { backgroundColor: colors.primarySoft },
             ]}
           >
-            <AppIcon name={icon} size={22} color={colors.primary} />
+            <AppIcon name={icon} size={22} color={colors.accent} />
           </View>
           <Text style={[styles.modalTitle, { color: colors.text }]}>
             {title}
@@ -406,13 +704,12 @@ function SmoothDialog({
           </Text>
           <View style={styles.modalActions}>
             {cancelText && (
-              <TouchableOpacity
+              <PressableScale
                 style={[
                   styles.modalCancelBtn,
                   { borderColor: colors.border, backgroundColor: colors.surfaceMuted },
                 ]}
                 onPress={onClose}
-                activeOpacity={0.7}
               >
                 <Text
                   style={[
@@ -422,9 +719,9 @@ function SmoothDialog({
                 >
                   {cancelText}
                 </Text>
-              </TouchableOpacity>
+              </PressableScale>
             )}
-            <TouchableOpacity
+            <PressableScale
               style={[
                 styles.modalConfirmBtn,
                 { backgroundColor: colors.primaryStrong },
@@ -433,10 +730,9 @@ function SmoothDialog({
                 if (onConfirm) onConfirm();
                 else onClose();
               }}
-              activeOpacity={0.8}
             >
               <Text style={styles.modalConfirmText}>{confirmText}</Text>
-            </TouchableOpacity>
+            </PressableScale>
           </View>
         </Animated.View>
       </View>
@@ -444,6 +740,9 @@ function SmoothDialog({
   );
 }
 
+/**
+ * Standard AppHeader for secondary screens (Timetable, Attendance, Class, etc.)
+ */
 function AppHeader({
   title,
   subtitle,
@@ -453,6 +752,7 @@ function AppHeader({
   lang,
   onBack,
   colors,
+  isDark,
 }: {
   title: string;
   subtitle?: string;
@@ -461,52 +761,74 @@ function AppHeader({
   onNotifications?: () => void;
   lang: Lang;
   onBack?: () => void;
-  colors: ReturnType<typeof getColors>;
+  colors: ThemeColors;
+  isDark: boolean;
 }) {
   return (
     <View
       style={[
-        styles.appHeader,
-        { backgroundColor: colors.surface, borderBottomColor: colors.border },
+        styles.standardHeader,
+        {
+          backgroundColor: isDark
+            ? "rgba(8, 26, 51, 0.72)"
+            : "rgba(244, 247, 251, 0.78)",
+          borderBottomColor: colors.borderSubtle,
+        },
       ]}
     >
       <View style={styles.headerLine}>
-        {onBack && (
-          <TouchableOpacity
-            style={styles.backButton}
+        {onBack ? (
+          <PressableScale
+            style={[
+              styles.backButtonWrap,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
             onPress={onBack}
-            activeOpacity={0.7}
           >
-            <AppIcon name="back" size={24} color={colors.primary} />
-          </TouchableOpacity>
-        )}
+            <AppIcon name="back" size={20} color={colors.primary} />
+          </PressableScale>
+        ) : null}
+
         <View style={styles.titleStack}>
           {subtitle ? (
-            <Text style={[styles.eyebrow, { color: colors.textSecondary }]}>
-              {subtitle}
-            </Text>
+            <View style={styles.subtitleLine}>
+              <AppIcon
+                name="calendar"
+                size={11}
+                color={isDark ? colors.accent : colors.secondary}
+              />
+              <Text
+                style={[
+                  styles.eyebrow,
+                  { color: isDark ? colors.accent : colors.secondary },
+                ]}
+              >
+                {subtitle}
+              </Text>
+            </View>
           ) : null}
           <Text
             numberOfLines={1}
-            style={[styles.headerTitle, { color: colors.text }]}
+            style={[styles.standardHeaderTitle, { color: colors.text }]}
           >
             {title}
           </Text>
         </View>
+
         <View style={styles.headerActions}>
-          <TouchableOpacity
+          <PressableScale
             onPress={onToggleOnline}
-            activeOpacity={0.8}
             style={[
               styles.connectivity,
               {
                 backgroundColor: online ? colors.successSoft : colors.surfaceMuted,
+                borderColor: online ? "rgba(34, 160, 107, 0.25)" : colors.border,
               },
             ]}
           >
             <AppIcon
               name={online ? "cloud" : "wifiOff"}
-              size={13}
+              size={12}
               color={online ? colors.success : colors.textSecondary}
             />
             <Text
@@ -517,19 +839,31 @@ function AppHeader({
             >
               {online ? copy[lang].synced : copy[lang].offline}
             </Text>
-          </TouchableOpacity>
+          </PressableScale>
+
           {onNotifications && (
-            <TouchableOpacity
+            <PressableScale
               style={[
                 styles.iconButton,
-                { backgroundColor: colors.surface, borderColor: colors.border },
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                  shadowColor: isDark ? "#000" : "#102B55",
+                },
               ]}
               onPress={onNotifications}
-              activeOpacity={0.7}
             >
               <AppIcon name="bell" size={18} color={colors.text} />
-              <View style={[styles.unreadDotBadge, { backgroundColor: colors.danger, borderColor: colors.surface }]} />
-            </TouchableOpacity>
+              <View
+                style={[
+                  styles.unreadDotBadge,
+                  {
+                    backgroundColor: colors.danger,
+                    borderColor: colors.surface,
+                  },
+                ]}
+              />
+            </PressableScale>
           )}
         </View>
       </View>
@@ -537,15 +871,16 @@ function AppHeader({
   );
 }
 
-function OfflineNotice({ colors }: { colors: ReturnType<typeof getColors> }) {
+/** Offline Notice */
+function OfflineNotice({ colors }: { colors: ThemeColors }) {
   return (
-    <View style={[styles.offlineNotice, { backgroundColor: colors.warningSoft }]}>
-      <AppIcon name="wifiOff" size={18} color={colors.warning} />
+    <View style={[styles.offlineNotice, { backgroundColor: colors.warningSoft, borderColor: "rgba(233, 181, 68, 0.3)" }]}>
+      <AppIcon name="wifiOff" size={17} color={colors.warning} />
       <View style={styles.offlineNoticeTexts}>
         <Text style={[styles.offlineNoticeTitle, { color: colors.warning }]}>
           Données en cache
         </Text>
-        <Text style={[styles.offlineNoticeDesc, { color: colors.warning }]}>
+        <Text style={[styles.offlineNoticeDesc, { color: colors.textSecondary }]}>
           Dernière mise à jour aujourd’hui à 10:42
         </Text>
       </View>
@@ -553,6 +888,9 @@ function OfflineNotice({ colors }: { colors: ReturnType<typeof getColors> }) {
   );
 }
 
+/* ==========================================================================
+   SCHEDULE & TIMELINE DATA
+   ========================================================================== */
 type ClassItem = {
   time: string;
   end: string;
@@ -621,24 +959,27 @@ const teacherClasses: ClassItem[] = [
   },
 ];
 
-function ClassRow({
+/** Class Timeline Row */
+const ClassRow = React.memo(function ClassRow({
   item,
   onClick,
   colors,
+  isLast = false,
 }: {
   item: ClassItem;
   onClick: () => void;
-  colors: ReturnType<typeof getColors>;
+  colors: ThemeColors;
+  isLast?: boolean;
 }) {
   return (
-    <TouchableOpacity
-      activeOpacity={0.7}
+    <PressableScale
       onPress={onClick}
       style={[
         styles.classRow,
         {
           backgroundColor: item.current ? colors.primarySoft : colors.surface,
           borderBottomColor: colors.border,
+          borderBottomWidth: isLast ? 0 : 1,
         },
       ]}
     >
@@ -652,8 +993,8 @@ function ClassRow({
           style={[
             styles.timelineDot,
             {
-              backgroundColor: item.current ? colors.info : colors.surface,
-              borderColor: item.current ? colors.info : colors.textSecondary,
+              backgroundColor: item.current ? colors.accent : colors.surface,
+              borderColor: item.current ? colors.accent : colors.textSecondary,
             },
           ]}
         />
@@ -670,71 +1011,126 @@ function ClassRow({
         </Text>
         <StatusBadge state={item.tone} label={item.status} colors={colors} />
       </View>
-      <AppIcon name="chevron" size={18} color={colors.textSecondary} />
-    </TouchableOpacity>
+      <AppIcon name="chevron" size={17} color={colors.textSecondary} />
+    </PressableScale>
   );
+});
+
+/* ==========================================================================
+   BOTTOM NAVIGATION BAR WITH SLIDING INDICATOR
+   ========================================================================== */
+interface BottomNavProps {
+  currentTab: Screen;
+  onNavigate: (screen: Screen) => void;
+  lang: Lang;
+  colors: ThemeColors;
+  isDark: boolean;
+  scrollX: Animated.Value;
+  screenWidth: number;
 }
 
+const TABS: { icon: string; screen: Screen; labelKey: keyof typeof copy.fr }[] = [
+  { icon: "home", screen: "home", labelKey: "home" },
+  { icon: "calendar", screen: "timetable", labelKey: "timetable" },
+  { icon: "check", screen: "attendance", labelKey: "attendance" },
+  { icon: "user", screen: "profile", labelKey: "profile" },
+];
+
 function BottomNav({
-  screen,
+  currentTab,
   onNavigate,
   lang,
   colors,
-}: {
-  screen: Screen;
-  onNavigate: (screen: Screen) => void;
-  lang: Lang;
-  colors: ReturnType<typeof getColors>;
-}) {
+  isDark,
+  scrollX,
+  screenWidth,
+}: BottomNavProps) {
   const insets = useSafeAreaInsets();
-  const items: { icon: string; screen: Screen; label: string }[] = [
-    { icon: "home", screen: "home", label: copy[lang].home },
-    { icon: "calendar", screen: "timetable", label: copy[lang].timetable },
-    { icon: "check", screen: "attendance", label: copy[lang].attendance },
-    { icon: "user", screen: "profile", label: copy[lang].profile },
-  ];
+  const tabWidth = screenWidth / 4;
+  // Increased width: extends comfortably beyond both sides of the 22px icon (18px padding each side)
+  const indicatorWidth = 58;
+  // Current height preserved exactly (28px)
+  const indicatorHeight = 28;
+  const indicatorLeftOffset = (tabWidth - indicatorWidth) / 2;
+
+  const indicatorTranslateX = scrollX.interpolate({
+    inputRange: [0, screenWidth, 2 * screenWidth, 3 * screenWidth],
+    outputRange: [0, tabWidth, 2 * tabWidth, 3 * tabWidth],
+    extrapolate: "clamp",
+  });
 
   return (
     <View
       style={[
-        styles.bottomNav,
+        styles.bottomNavContainer,
         {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
+          backgroundColor: colors.navBackground,
+          borderTopColor: colors.borderSubtle,
           paddingBottom: Math.max(insets.bottom, 10),
         },
       ]}
     >
-      {items.map((item) => {
-        const isActive = screen === item.screen;
+      {/* Compact Sliding Active Icon Highlight (Instagram-inspired: height only slightly greater than icon, 3-4px vertical padding, 6-8px horizontal padding) */}
+      <Animated.View
+        style={[
+          styles.bottomNavCompactIndicator,
+          {
+            width: indicatorWidth,
+            height: indicatorHeight,
+            borderRadius: indicatorHeight / 2,
+            backgroundColor: isDark
+              ? "rgba(233, 181, 68, 0.16)"
+              : "rgba(233, 181, 68, 0.18)",
+            transform: [
+              {
+                translateX: Animated.add(
+                  indicatorTranslateX,
+                  indicatorLeftOffset
+                ),
+              },
+            ],
+          },
+        ]}
+      />
+
+      {TABS.map((tab) => {
+        const isActive = currentTab === tab.screen;
+        const label = copy[lang][tab.labelKey];
+
         return (
           <TouchableOpacity
-            key={item.screen}
-            onPress={() => onNavigate(item.screen)}
-            style={styles.bottomNavItem}
+            key={tab.screen}
+            onPress={() => onNavigate(tab.screen)}
+            style={[styles.bottomNavItem, { width: tabWidth }]}
             activeOpacity={0.7}
           >
-            {isActive && (
-              <View
-                style={[styles.bottomNavIndicator, { backgroundColor: colors.primary }]}
+            <View style={styles.bottomNavIconWrap}>
+              <AppIcon
+                name={tab.icon}
+                size={22}
+                color={isActive ? colors.navActive : colors.navInactive}
               />
-            )}
-            <AppIcon
-              name={item.icon}
-              size={20}
-              color={isActive ? colors.primary : colors.textSecondary}
-            />
+            </View>
             <Text
               style={[
                 styles.bottomNavLabel,
                 {
-                  color: isActive ? colors.primary : colors.textSecondary,
-                  fontWeight: isActive ? "700" : "500",
+                  color: isActive ? colors.navActive : colors.navInactive,
+                  fontWeight: isActive ? "800" : "500",
                 },
               ]}
             >
-              {item.label}
+              {label}
             </Text>
+            {/* Active Gold Indicator underline matching reference */}
+            <View
+              style={[
+                styles.bottomNavIndicatorBar,
+                {
+                  backgroundColor: isActive ? colors.accent : "transparent",
+                },
+              ]}
+            />
           </TouchableOpacity>
         );
       })}
@@ -742,6 +1138,13 @@ function BottomNav({
   );
 }
 
+/* ==========================================================================
+   SCREENS IMPLEMENTATION
+   ========================================================================== */
+
+/**
+ * 1. LoginScreen
+ */
 function LoginScreen({
   onLogin,
   role,
@@ -751,6 +1154,7 @@ function LoginScreen({
   theme,
   setTheme,
   colors,
+  isDark,
 }: {
   onLogin: () => void;
   role: Role;
@@ -759,7 +1163,8 @@ function LoginScreen({
   setLang: (l: Lang) => void;
   theme: Theme;
   setTheme: (t: Theme) => void;
-  colors: ReturnType<typeof getColors>;
+  colors: ThemeColors;
+  isDark: boolean;
 }) {
   const [email, setEmail] = useState(
     role === "student" ? "etudiant@issatk.rnu.tn" : "enseignant@issatk.rnu.tn"
@@ -768,8 +1173,8 @@ function LoginScreen({
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [forgotModalVisible, setForgotModalVisible] = useState(false);
+  const isRTL = lang === "ar";
 
-  // Sync default email when switching role
   const handleRoleChange = (newRole: Role) => {
     setRole(newRole);
     setEmail(
@@ -784,84 +1189,92 @@ function LoginScreen({
     setTimeout(() => {
       setLoading(false);
       onLogin();
-    }, 350);
+    }, 320);
+  };
+
+  const cycleLang = () => {
+    if (lang === "fr") setLang("en");
+    else if (lang === "en") setLang("ar");
+    else setLang("fr");
   };
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: colors.surface }}
+      style={{ flex: 1, backgroundColor: "transparent" }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView
         style={styles.loginScreenScroll}
         contentContainerStyle={[
           styles.loginScreenContent,
-          { backgroundColor: colors.surface },
+          { backgroundColor: "transparent" },
         ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         {/* Top Header Actions */}
-        <View style={styles.loginTopBar}>
+        <View style={[styles.loginTopBar, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
           <View
             style={[
               styles.institutionTag,
-              { backgroundColor: colors.primarySoft },
+              { backgroundColor: colors.primarySoft, borderColor: colors.border },
             ]}
           >
-            <AppIcon name="shield" size={13} color={colors.primary} />
-            <Text style={[styles.institutionTagText, { color: colors.primary }]}>
-              Portail Universitaire
+            <AppIcon name="shield" size={13} color={colors.accent} />
+            <Text style={[styles.institutionTagText, { color: colors.text }]}>
+              {buttonCopy[lang].portalTitle}
             </Text>
           </View>
-          <View style={styles.loginTopActions}>
-            <TouchableOpacity
+          <View style={[styles.loginTopActions, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+            <PressableScale
               style={[
                 styles.compactControl,
-                { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
+                { backgroundColor: colors.surface, borderColor: colors.border },
               ]}
-              onPress={() => setLang(lang === "fr" ? "en" : "fr")}
-              activeOpacity={0.7}
+              onPress={cycleLang}
             >
               <AppIcon name="language" size={13} color={colors.textSecondary} />
               <Text style={[styles.compactControlText, { color: colors.textSecondary }]}>
-                {lang === "fr" ? "FR" : "EN"}
+                {lang === "fr" ? "FR" : lang === "en" ? "EN" : "عربي"}
               </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
+            </PressableScale>
+            <PressableScale
               style={[
                 styles.compactControl,
-                { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
+                { backgroundColor: colors.surface, borderColor: colors.border },
               ]}
-              onPress={() => setTheme(theme === "dark" ? "light" : "dark")}
-              activeOpacity={0.7}
+              onPress={() => setTheme(isDark ? "light" : "dark")}
             >
               <AppIcon
-                name={theme === "dark" ? "sun" : "moon"}
+                name={isDark ? "sun" : "moon"}
                 size={13}
                 color={colors.textSecondary}
               />
               <Text style={[styles.compactControlText, { color: colors.textSecondary }]}>
-                {theme === "dark" ? "Clair" : "Sombre"}
+                {isDark ? "Clair" : "Sombre"}
               </Text>
-            </TouchableOpacity>
+            </PressableScale>
           </View>
         </View>
 
-        {/* Central Core: Brand, Role Switcher, and Credentials Form */}
-        <View style={styles.loginMainSection}>
+        {/* Central Brand & Login Card */}
+        <View
+          style={[
+            styles.loginCard,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+              shadowColor: isDark ? "#000" : "#102B55",
+            },
+          ]}
+        >
           <View style={styles.brandBlock}>
-            <Logo colors={colors} />
-            <Text style={[styles.institution, { color: colors.primary }]}>
-              ISSAT Kairouan
-            </Text>
+            <IssatLogo colors={colors} isDark={isDark} size="xl" />
             <Text style={[styles.brandTitle, { color: colors.text }]}>
               My ISSATkr
             </Text>
             <Text style={[styles.brandSubtitle, { color: colors.textSecondary }]}>
-              {lang === "fr"
-                ? "Gestion universitaire des présences"
-                : "University Attendance Management"}
+              {buttonCopy[lang].portalSubtitle}
             </Text>
           </View>
 
@@ -869,7 +1282,11 @@ function LoginScreen({
           <View
             style={[
               styles.roleSwitch,
-              { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
+              {
+                backgroundColor: colors.surfaceMuted,
+                borderColor: colors.border,
+                flexDirection: isRTL ? "row-reverse" : "row",
+              },
             ]}
           >
             <TouchableOpacity
@@ -892,12 +1309,12 @@ function LoginScreen({
                 style={[
                   styles.roleSwitchText,
                   {
-                    color: role === "student" ? colors.primary : colors.textSecondary,
+                    color: role === "student" ? colors.text : colors.textSecondary,
                     fontWeight: role === "student" ? "700" : "500",
                   },
                 ]}
               >
-                {lang === "fr" ? "Étudiant" : "Student"}
+                {buttonCopy[lang].student}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -912,20 +1329,20 @@ function LoginScreen({
               activeOpacity={0.8}
             >
               <AppIcon
-                name="award"
+                name="check"
                 size={14}
-                color={role === "teacher" ? colors.primary : colors.textSecondary}
+                color={role === "teacher" ? colors.accent : colors.textSecondary}
               />
               <Text
                 style={[
                   styles.roleSwitchText,
                   {
-                    color: role === "teacher" ? colors.primary : colors.textSecondary,
+                    color: role === "teacher" ? colors.text : colors.textSecondary,
                     fontWeight: role === "teacher" ? "700" : "500",
                   },
                 ]}
               >
-                {lang === "fr" ? "Enseignant" : "Teacher"}
+                {buttonCopy[lang].teacher}
               </Text>
             </TouchableOpacity>
           </View>
@@ -933,15 +1350,19 @@ function LoginScreen({
           {/* Form Fields */}
           <View style={styles.formStack}>
             <View style={styles.field}>
-              <Text style={[styles.fieldLabel, { color: colors.text }]}>
-                {lang === "fr" ? "Identifiant institutionnel" : "Institutional ID"}
+              <Text style={[styles.fieldLabel, { color: colors.text, textAlign: isRTL ? "right" : "left" }]}>
+                {buttonCopy[lang].institutionalId}
               </Text>
               <View style={styles.inputWrapper}>
+                <View style={[styles.inputPrefixIcon, isRTL && { left: undefined, right: 14 }]}>
+                  <AppIcon name="mail" size={17} color={colors.textSecondary} />
+                </View>
                 <TextInput
                   style={[
                     styles.input,
+                    isRTL ? { paddingRight: 42, paddingLeft: 14, textAlign: "right" } : styles.inputWithPrefix,
                     {
-                      backgroundColor: colors.surface,
+                      backgroundColor: colors.surfaceMuted,
                       borderColor: colors.border,
                       color: colors.text,
                     },
@@ -957,18 +1378,22 @@ function LoginScreen({
             </View>
 
             <View style={styles.field}>
-              <View style={styles.fieldHeader}>
+              <View style={[styles.fieldHeader, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
                 <Text style={[styles.fieldLabel, { color: colors.text }]}>
-                  {lang === "fr" ? "Mot de passe" : "Password"}
+                  {buttonCopy[lang].password}
                 </Text>
               </View>
               <View style={styles.passwordWrap}>
+                <View style={[styles.inputPrefixIcon, isRTL && { left: undefined, right: 14 }]}>
+                  <AppIcon name="lock" size={17} color={colors.textSecondary} />
+                </View>
                 <TextInput
                   style={[
                     styles.input,
+                    isRTL ? { paddingRight: 42, paddingLeft: 46, textAlign: "right" } : styles.inputWithPrefix,
                     styles.passwordInput,
                     {
-                      backgroundColor: colors.surface,
+                      backgroundColor: colors.surfaceMuted,
                       borderColor: colors.border,
                       color: colors.text,
                     },
@@ -981,7 +1406,7 @@ function LoginScreen({
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
-                  style={styles.passwordToggle}
+                  style={[styles.passwordToggle, isRTL && { right: undefined, left: 14 }]}
                   activeOpacity={0.7}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
@@ -995,66 +1420,95 @@ function LoginScreen({
             </View>
 
             <TouchableOpacity
-              style={styles.forgotButton}
+              style={[styles.forgotButton, { alignSelf: isRTL ? "flex-start" : "flex-end" }]}
               onPress={() => setForgotModalVisible(true)}
               activeOpacity={0.7}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Text style={[styles.forgotText, { color: colors.primary }]}>
-                {lang === "fr" ? "Mot de passe oublié ?" : "Forgot password?"}
+              <Text style={[styles.forgotText, { color: isDark ? colors.accent : colors.secondary }]}>
+                {buttonCopy[lang].forgotPassword}
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
+            <PressableScale
               style={[
                 styles.primaryButton,
-                { backgroundColor: colors.primaryStrong },
+                {
+                  backgroundColor: isDark ? colors.accent : colors.primary,
+                  shadowColor: isDark ? colors.accent : colors.primary,
+                },
               ]}
               onPress={submit}
-              activeOpacity={0.85}
               disabled={loading}
             >
               {loading ? (
                 <View style={styles.buttonLoadingRow}>
-                  <Text style={styles.primaryButtonText}>
-                    {lang === "fr" ? "Connexion en cours…" : "Connecting…"}
+                  <Text
+                    style={[
+                      styles.primaryButtonText,
+                      { color: isDark ? "#081A33" : "#FFFFFF" },
+                    ]}
+                  >
+                    {buttonCopy[lang].connecting}
                   </Text>
                 </View>
               ) : (
-                <Text style={styles.primaryButtonText}>
-                  {lang === "fr" ? "Se connecter" : "Sign In"}
-                </Text>
+                <View
+                  style={[
+                    styles.buttonContentRow,
+                    { flexDirection: isRTL ? "row-reverse" : "row" },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.primaryButtonText,
+                      {
+                        color: isDark ? "#081A33" : "#FFFFFF",
+                        marginRight: isRTL ? 0 : 8,
+                        marginLeft: isRTL ? 8 : 0,
+                      },
+                    ]}
+                  >
+                    {buttonCopy[lang].signIn}
+                  </Text>
+                  <View style={styles.buttonIconWrap}>
+                    <AppIcon
+                      name={isRTL ? "arrowLeft" : "arrowRight"}
+                      size={16}
+                      color={isDark ? "#081A33" : "#FFFFFF"}
+                    />
+                  </View>
+                </View>
               )}
-            </TouchableOpacity>
+            </PressableScale>
           </View>
         </View>
 
-        {/* Professional Academic Footer */}
+        {/* Academic Footer */}
         <View style={styles.loginFooter}>
-          <View style={styles.securityRow}>
-            <AppIcon name="lock" size={13} color={colors.textSecondary} />
+          <View style={[styles.securityRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+            <AppIcon name="lock" size={13} color={colors.accent} />
             <Text style={[styles.secureNote, { color: colors.textSecondary }]}>
-              {lang === "fr"
-                ? "Accès sécurisé réservé aux membres de l’ISSATK"
-                : "Restricted secure access for ISSATK members"}
+              {buttonCopy[lang].secureAccess}
             </Text>
           </View>
           <Text style={[styles.universityAffiliation, { color: colors.textSecondary }]}>
-            Institut Supérieur des Sciences Appliquées et de Technologie de Kairouan
+            {buttonCopy[lang].institutionName}
           </Text>
         </View>
 
-        {/* Smooth Dialog for Forgot Password */}
         <SmoothDialog
           visible={forgotModalVisible}
           onClose={() => setForgotModalVisible(false)}
-          title={lang === "fr" ? "Récupération d'accès" : "Access Recovery"}
+          title={lang === "ar" ? "استرجاع الحساب" : lang === "fr" ? "Récupération d'accès" : "Access Recovery"}
           message={
-            lang === "fr"
+            lang === "ar"
+              ? "يرجى الاتصال بمصلحة شؤون الطلبة أو مصلحة الإعلامية بالمعهد (مكتب A12 أو scolarite@issatk.rnu.tn) مصحوباً ببطاقة الطالب أو المعرف الجامعي."
+              : lang === "fr"
               ? "Veuillez contacter le service scolarité ou l'administrateur informatique de l'ISSATK (bureau A12 ou scolarite@issatk.rnu.tn) muni de votre carte d'étudiant ou identifiant enseignant."
               : "Please contact the ISSATK administration office or IT department (Office A12 or scolarite@issatk.rnu.tn) with your university ID."
           }
-          confirmText={lang === "fr" ? "Compris" : "Got it"}
+          confirmText={buttonCopy[lang].done}
           colors={colors}
           icon="info"
         />
@@ -1063,6 +1517,17 @@ function LoginScreen({
   );
 }
 
+/**
+ * 2. HomeScreen — FAITHFUL HERITAGE NAVY REFERENCE MATCH
+ * - Stationary prominent university architectural photograph in upper-right (~48% width, 285px height)
+ * - Transparent air top bar: Official ISSAT logo on left, notification bell circle on right
+ * - Spacious greeting section on left ("Bonjour," / "Amine 👋" / 📅 "Mardi 18 mars 2025")
+ * - Next Class card with gold accent bar, "Next Class" pill, and circular action button
+ * - Generous section spacing (24–28px) and 22px horizontal screen padding
+ * - "Today's Schedule" timeline card with Active / Upcoming badges
+ * - "Attendance Today" deep navy card with gold circular progress ring
+ * - "Quick Actions" 4-card grid
+ */
 function HomeScreen({
   role,
   online,
@@ -1070,104 +1535,380 @@ function HomeScreen({
   navigate,
   lang,
   colors,
+  isDark,
 }: {
   role: Role;
   online: boolean;
   toggleOnline: () => void;
   navigate: (s: Screen) => void;
   lang: Lang;
-  colors: ReturnType<typeof getColors>;
+  colors: ThemeColors;
+  isDark: boolean;
 }) {
   const classes = role === "student" ? studentClasses : teacherClasses;
+  const greetingName = role === "student" ? "Amine" : "Mme. Mansouri";
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.surfaceMuted }}>
-      <AppHeader
-        title={role === "student" ? "Bonjour, Amine" : "Bonjour, Mme. Mansouri"}
-        subtitle="Mardi 18 mars 2025"
-        online={online}
-        onToggleOnline={toggleOnline}
-        onNotifications={() => navigate("notifications")}
-        lang={lang}
-        colors={colors}
-      />
-      <ScrollView contentContainerStyle={styles.screenContent}>
-        {!online && <OfflineNotice colors={colors} />}
+    <View style={{ flex: 1, backgroundColor: "transparent" }}>
+      {/* 1. Top Header Bar (Matching Reference Image) */}
+      <View style={styles.homeTopBar}>
+        <IssatLogo colors={colors} isDark={isDark} size="md" />
 
-        <View style={[styles.nextCard, { backgroundColor: colors.primaryStrong }]}>
-          <View style={styles.nextTop}>
-            <Text style={styles.nextKicker}>{copy[lang].next}</Text>
-            <View style={styles.nextBadge}>
-              <Text style={styles.nextBadgeText}>Dans 12 min</Text>
-            </View>
-          </View>
-          <Text style={styles.nextTitle}>{classes[1].subject}</Text>
-          <View style={styles.nextInfoRow}>
-            <AppIcon name="clock" size={14} color="#dcecff" />
-            <Text style={styles.nextInfoText}>
-              {classes[1].time} – {classes[1].end}
+        <View style={styles.homeTopActions}>
+          <PressableScale
+            onPress={toggleOnline}
+            style={[
+              styles.connectivity,
+              {
+                backgroundColor: online ? colors.successSoft : colors.surfaceMuted,
+                borderColor: online ? "rgba(34, 160, 107, 0.25)" : colors.border,
+              },
+            ]}
+          >
+            <AppIcon
+              name={online ? "cloud" : "wifiOff"}
+              size={12}
+              color={online ? colors.success : colors.textSecondary}
+            />
+            <Text
+              style={[
+                styles.connectivityText,
+                { color: online ? colors.success : colors.textSecondary },
+              ]}
+            >
+              {online ? copy[lang].synced : copy[lang].offline}
+            </Text>
+          </PressableScale>
+
+          <PressableScale
+            style={[
+              styles.notificationBellCircle,
+              {
+                backgroundColor: isDark ? colors.surfaceRaised : "#FFFFFF",
+                borderColor: isDark ? colors.border : "rgba(16, 43, 85, 0.08)",
+                shadowColor: isDark ? "#000" : "#102B55",
+              },
+            ]}
+            onPress={() => navigate("notifications")}
+          >
+            <AppIcon name="bell" size={19} color={colors.text} />
+            <View
+              style={[
+                styles.notificationRedDot,
+                {
+                  backgroundColor: colors.danger,
+                  borderColor: isDark ? colors.surfaceRaised : "#FFFFFF",
+                },
+              ]}
+            />
+          </PressableScale>
+        </View>
+      </View>
+
+      <ScrollView
+        contentContainerStyle={styles.screenContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* 3. Spacious Greeting Section (Upper-Left alongside the prominent building) */}
+        <View style={styles.homeGreetingSection}>
+          <Text style={[styles.greetingSalutation, { color: colors.text }]}>
+            {lang === "fr" ? "Bonjour," : lang === "ar" ? "مرحباً،" : "Good morning,"}
+          </Text>
+          <Text style={[styles.greetingName, { color: colors.text }]}>
+            {greetingName} 👋
+          </Text>
+          <View style={styles.greetingDateRow}>
+            <AppIcon
+              name="calendar"
+              size={13}
+              color={isDark ? colors.accent : colors.secondary}
+            />
+            <Text
+              style={[
+                styles.greetingDateText,
+                { color: colors.textSecondary },
+              ]}
+            >
+              {lang === "fr" ? "Mardi 18 mars 2025" : lang === "ar" ? "الثلاثاء 18 مارس 2025" : "Tuesday, Mar 18, 2025"}
             </Text>
           </View>
-          <View style={styles.nextInfoRow}>
-            <AppIcon name="map" size={14} color="#dcecff" />
-            <Text style={styles.nextInfoText}>{classes[1].meta}</Text>
+        </View>
+
+        {!online && <OfflineNotice colors={colors} />}
+
+        {/* 4. Next Class Highlight Card (Exact Reference Design Match) */}
+        <View
+          style={[
+            styles.nextCard,
+            {
+              backgroundColor: colors.card,
+              borderColor: isDark ? colors.border : "transparent",
+              shadowColor: isDark ? "#000" : "#102B55",
+            },
+          ]}
+        >
+          {/* Gold Accent Strip on left */}
+          <View style={[styles.nextCardAccentBar, { backgroundColor: colors.accent }]} />
+
+          <View style={styles.nextCardBody}>
+            <View style={styles.nextCardHeader}>
+              <View style={[styles.nextBadge, { backgroundColor: colors.accentSoft }]}>
+                <Text style={[styles.nextBadgeText, { color: colors.accentText }]}>
+                  {copy[lang].next}
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.timeBadge,
+                  {
+                    backgroundColor: isDark ? colors.surfaceRaised : "#EBF1F8",
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.timeBadgeText,
+                    { color: isDark ? colors.textSecondary : colors.secondary },
+                  ]}
+                >
+                  {copy[lang].in12min}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.nextCardContentRow}>
+              <View style={{ flex: 1, paddingRight: 10 }}>
+                <Text
+                  numberOfLines={1}
+                  style={[styles.nextTitle, { color: colors.text }]}
+                >
+                  {classes[1].subject}
+                </Text>
+                <View style={styles.nextMetaRow}>
+                  <View style={styles.nextInfoRow}>
+                    <AppIcon name="clock" size={13} color={colors.textSecondary} />
+                    <Text style={[styles.nextInfoText, { color: colors.textSecondary }]}>
+                      {classes[1].time} – {classes[1].end}
+                    </Text>
+                  </View>
+                  <Text style={[styles.metaDivider, { color: colors.border }]}>|</Text>
+                  <View style={styles.nextInfoRow}>
+                    <AppIcon name="map" size={13} color={colors.textSecondary} />
+                    <Text
+                      numberOfLines={1}
+                      style={[styles.nextInfoText, { color: colors.textSecondary }]}
+                    >
+                      {classes[1].meta}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Right Circular Action Button */}
+              <PressableScale
+                onPress={() => navigate("class")}
+                style={[
+                  styles.nextCircleBtn,
+                  { backgroundColor: isDark ? colors.accent : "#102B55" },
+                ]}
+              >
+                <AppIcon
+                  name="chevron"
+                  size={19}
+                  color={isDark ? "#081A33" : "#FFFFFF"}
+                />
+              </PressableScale>
+            </View>
           </View>
+        </View>
+
+        {/* 5. Today's Schedule Section */}
+        <View style={styles.sectionHeading}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            {copy[lang].todaysSchedule}
+          </Text>
           <TouchableOpacity
-            style={styles.nextCardButton}
-            onPress={() => navigate("class")}
-            activeOpacity={0.8}
+            onPress={() => navigate("timetable")}
+            activeOpacity={0.7}
+            style={styles.viewAllRow}
           >
-            <Text style={styles.nextCardButtonText}>Voir le cours</Text>
-            <AppIcon name="chevron" size={14} color="#ffffff" />
+            <Text style={[styles.viewAllText, { color: isDark ? colors.accent : colors.secondary }]}>
+              {copy[lang].viewAll}
+            </Text>
+            <AppIcon
+              name="chevron"
+              size={14}
+              color={isDark ? colors.accent : colors.secondary}
+            />
           </TouchableOpacity>
         </View>
 
-        <View style={styles.sectionHeading}>
-          <View>
-            <Text style={[styles.sectionKicker, { color: colors.textSecondary }]}>
-              {copy[lang].today}
-            </Text>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Votre journée
-            </Text>
-          </View>
-          <Text style={[styles.countLabel, { color: colors.textSecondary }]}>
-            3 {copy[lang].classes}
-          </Text>
-        </View>
-
+        {/* Daily Schedule Timeline Card */}
         <View
           style={[
             styles.timelineList,
-            { backgroundColor: colors.surface, borderColor: colors.border },
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              shadowColor: isDark ? "#000" : "#102B55",
+            },
           ]}
         >
-          {classes.map((item) => (
+          {classes.map((item, idx) => (
             <ClassRow
               item={item}
               key={item.time}
               onClick={() => navigate("class")}
               colors={colors}
+              isLast={idx === classes.length - 1}
             />
           ))}
         </View>
 
+        {/* 6. Attendance Summary Card (Heritage Navy Reference Feature) */}
+        <PressableScale
+          onPress={() => navigate("attendance")}
+          style={[
+            styles.attendanceSummaryCard,
+            {
+              backgroundColor: isDark ? "#142F52" : "#102B55",
+              borderColor: isDark ? colors.border : "rgba(233, 181, 68, 0.3)",
+            },
+          ]}
+        >
+          <View style={styles.attendanceSummaryLeft}>
+            <View style={styles.attendanceIconWrap}>
+              <AppIcon name="users" size={24} color="#FFFFFF" />
+            </View>
+            <View style={{ marginLeft: 16 }}>
+              <Text style={styles.attendanceSummaryLabel}>
+                {copy[lang].attendanceRate}
+              </Text>
+              <Text style={styles.attendanceSummaryBig}>
+                {role === "student" ? "90%" : "6 / 6"}
+              </Text>
+              <Text style={styles.attendanceSummarySub}>
+                {role === "student"
+                  ? "18 présences · 2 absences"
+                  : "Séances de la journée"}
+              </Text>
+            </View>
+          </View>
+
+          {/* Right Progress Ring & Chevron */}
+          <View style={styles.attendanceSummaryRight}>
+            <View style={styles.progressRingSim}>
+              <View style={[styles.progressRingSegment, { borderColor: colors.accent }]} />
+              <AppIcon name="chevron" size={17} color="#FFFFFF" />
+            </View>
+          </View>
+        </PressableScale>
+
+        {/* 7. Quick Actions Grid */}
+        <View style={styles.sectionHeading}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            {copy[lang].quickActions}
+          </Text>
+        </View>
+
+        <View style={styles.quickActionsGrid}>
+          <PressableScale
+            onPress={() => navigate("timetable")}
+            style={[
+              styles.quickActionCard,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                shadowColor: isDark ? "#000" : "#102B55",
+              },
+            ]}
+          >
+            <View style={[styles.quickActionIconWrap, { backgroundColor: colors.primarySoft }]}>
+              <AppIcon name="calendar" size={20} color={colors.primary} />
+            </View>
+            <Text numberOfLines={1} style={[styles.quickActionLabel, { color: colors.text }]}>
+              {copy[lang].viewTimetable}
+            </Text>
+          </PressableScale>
+
+          <PressableScale
+            onPress={() => navigate("attendance")}
+            style={[
+              styles.quickActionCard,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                shadowColor: isDark ? "#000" : "#102B55",
+              },
+            ]}
+          >
+            <View style={[styles.quickActionIconWrap, { backgroundColor: colors.accentSoft }]}>
+              <AppIcon name="check" size={20} color={colors.accent} />
+            </View>
+            <Text numberOfLines={1} style={[styles.quickActionLabel, { color: colors.text }]}>
+              {copy[lang].manageAttendance}
+            </Text>
+          </PressableScale>
+
+          <PressableScale
+            onPress={() => navigate("notifications")}
+            style={[
+              styles.quickActionCard,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                shadowColor: isDark ? "#000" : "#102B55",
+              },
+            ]}
+          >
+            <View style={[styles.quickActionIconWrap, { backgroundColor: colors.infoSoft }]}>
+              <AppIcon name="megaphone" size={20} color={colors.info} />
+            </View>
+            <Text numberOfLines={1} style={[styles.quickActionLabel, { color: colors.text }]}>
+              {copy[lang].announcements}
+            </Text>
+          </PressableScale>
+
+          <PressableScale
+            onPress={() => navigate("profile")}
+            style={[
+              styles.quickActionCard,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                shadowColor: isDark ? "#000" : "#102B55",
+              },
+            ]}
+          >
+            <View style={[styles.quickActionIconWrap, { backgroundColor: colors.surfaceMuted }]}>
+              <AppIcon name="settings" size={20} color={colors.textSecondary} />
+            </View>
+            <Text numberOfLines={1} style={[styles.quickActionLabel, { color: colors.text }]}>
+              {copy[lang].settings}
+            </Text>
+          </PressableScale>
+        </View>
+
+        {/* Teacher Administrative Requests Strip */}
         {role === "teacher" && (
-          <TouchableOpacity
+          <PressableScale
             style={[
               styles.requestStrip,
-              { backgroundColor: colors.surface, borderColor: colors.border },
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                shadowColor: isDark ? "#000" : "#102B55",
+              },
             ]}
             onPress={() => navigate("requests")}
-            activeOpacity={0.8}
           >
             <View
               style={[
                 styles.requestIcon,
-                { backgroundColor: colors.primarySoft },
+                { backgroundColor: colors.accentSoft },
               ]}
             >
-              <AppIcon name="file" size={18} color={colors.primary} />
+              <AppIcon name="file" size={18} color={colors.accent} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.requestStripTitle, { color: colors.text }]}>
@@ -1183,13 +1924,16 @@ function HomeScreen({
               </Text>
             </View>
             <AppIcon name="chevron" size={18} color={colors.textSecondary} />
-          </TouchableOpacity>
+          </PressableScale>
         )}
       </ScrollView>
     </View>
   );
 }
 
+/**
+ * 3. TimetableScreen
+ */
 function TimetableScreen({
   role,
   online,
@@ -1197,13 +1941,15 @@ function TimetableScreen({
   navigate,
   lang,
   colors,
+  isDark,
 }: {
   role: Role;
   online: boolean;
   toggleOnline: () => void;
   navigate: (s: Screen) => void;
   lang: Lang;
-  colors: ReturnType<typeof getColors>;
+  colors: ThemeColors;
+  isDark: boolean;
 }) {
   const classes = role === "student" ? studentClasses : teacherClasses;
   const days = [
@@ -1217,7 +1963,7 @@ function TimetableScreen({
   const [selectedDay, setSelectedDay] = useState("18");
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.surfaceMuted }}>
+    <View style={{ flex: 1, backgroundColor: "transparent" }}>
       <AppHeader
         title="Emploi du temps"
         subtitle="17 – 22 mars 2025"
@@ -1225,14 +1971,19 @@ function TimetableScreen({
         onToggleOnline={toggleOnline}
         lang={lang}
         colors={colors}
+        isDark={isDark}
       />
-      <ScrollView contentContainerStyle={styles.screenContent}>
+      <ScrollView contentContainerStyle={styles.screenContent} showsVerticalScrollIndicator={false}>
         {!online && <OfflineNotice colors={colors} />}
 
         <View
           style={[
             styles.dayPicker,
-            { backgroundColor: colors.surface, borderColor: colors.border },
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              shadowColor: isDark ? "#000" : "#102B55",
+            },
           ]}
         >
           {days.map(([day, date]) => {
@@ -1244,7 +1995,7 @@ function TimetableScreen({
                   styles.dayPickerItem,
                   isSel && [
                     styles.dayPickerItemSelected,
-                    { backgroundColor: colors.primaryStrong },
+                    { backgroundColor: isDark ? colors.accent : "#102B55" },
                   ],
                 ]}
                 onPress={() => setSelectedDay(date)}
@@ -1253,7 +2004,13 @@ function TimetableScreen({
                 <Text
                   style={[
                     styles.dayPickerDay,
-                    { color: isSel ? "#ffffff" : colors.textSecondary },
+                    {
+                      color: isSel
+                        ? isDark
+                          ? "#081A33"
+                          : "#FFFFFF"
+                        : colors.textSecondary,
+                    },
                   ]}
                 >
                   {day}
@@ -1261,7 +2018,13 @@ function TimetableScreen({
                 <Text
                   style={[
                     styles.dayPickerDate,
-                    { color: isSel ? "#ffffff" : colors.text },
+                    {
+                      color: isSel
+                        ? isDark
+                          ? "#081A33"
+                          : "#FFFFFF"
+                        : colors.text,
+                    },
                   ]}
                 >
                   {date}
@@ -1272,42 +2035,45 @@ function TimetableScreen({
         </View>
 
         <View style={styles.weekControls}>
-          <TouchableOpacity
+          <PressableScale
             style={[
               styles.weekNavBtn,
               { backgroundColor: colors.surface, borderColor: colors.border },
             ]}
-            activeOpacity={0.7}
           >
             <AppIcon name="back" size={16} color={colors.text} />
-          </TouchableOpacity>
+          </PressableScale>
           <Text style={[styles.weekControlsText, { color: colors.text }]}>
             {selectedDay === "18" ? "Mardi 18 mars" : `Journée du ${selectedDay} mars`}
           </Text>
-          <TouchableOpacity
+          <PressableScale
             style={[
               styles.weekNavBtn,
               { backgroundColor: colors.surface, borderColor: colors.border },
             ]}
-            activeOpacity={0.7}
           >
             <AppIcon name="chevron" size={16} color={colors.text} />
-          </TouchableOpacity>
+          </PressableScale>
         </View>
 
         <SubtleFadeTransition triggerKey={selectedDay}>
           <View
             style={[
               styles.timelineList,
-              { backgroundColor: colors.surface, borderColor: colors.border },
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                shadowColor: isDark ? "#000" : "#102B55",
+              },
             ]}
           >
-            {classes.map((item) => (
+            {classes.map((item, idx) => (
               <ClassRow
                 item={item}
                 key={item.time}
                 onClick={() => navigate("class")}
                 colors={colors}
+                isLast={idx === classes.length - 1}
               />
             ))}
           </View>
@@ -1317,6 +2083,9 @@ function TimetableScreen({
   );
 }
 
+/**
+ * 4. AttendanceScreen
+ */
 function AttendanceScreen({
   role,
   online,
@@ -1324,17 +2093,18 @@ function AttendanceScreen({
   navigate,
   lang,
   colors,
+  isDark,
 }: {
   role: Role;
   online: boolean;
   toggleOnline: () => void;
   navigate: (s: Screen) => void;
   lang: Lang;
-  colors: ReturnType<typeof getColors>;
+  colors: ThemeColors;
+  isDark: boolean;
 }) {
   const [filter, setFilter] = useState<"Toutes" | "Absences" | "En attente">("Toutes");
 
-  // Teacher roster state
   const [states, setStates] = useState<Record<number, "present" | "absent">>({
     0: "present",
     1: "present",
@@ -1364,7 +2134,7 @@ function AttendanceScreen({
 
   if (role === "student") {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.surfaceMuted }}>
+      <View style={{ flex: 1, backgroundColor: "transparent" }}>
         <AppHeader
           title="Historique de présence"
           subtitle="Mars 2025"
@@ -1372,18 +2142,24 @@ function AttendanceScreen({
           onToggleOnline={toggleOnline}
           lang={lang}
           colors={colors}
+          isDark={isDark}
         />
-        <ScrollView contentContainerStyle={styles.screenContent}>
+        <ScrollView contentContainerStyle={styles.screenContent} showsVerticalScrollIndicator={false}>
           {!online && <OfflineNotice colors={colors} />}
 
+          {/* 3 Summary Grid Stats */}
           <View
             style={[
               styles.summaryGrid,
-              { backgroundColor: colors.surface, borderColor: colors.border },
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                shadowColor: isDark ? "#000" : "#102B55",
+              },
             ]}
           >
             <View style={[styles.summaryCell, { borderRightColor: colors.border }]}>
-              <Text style={[styles.summaryNum, { color: colors.primary }]}>18</Text>
+              <Text style={[styles.summaryNum, { color: colors.success }]}>18</Text>
               <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
                 Présences
               </Text>
@@ -1402,6 +2178,7 @@ function AttendanceScreen({
             </View>
           </View>
 
+          {/* Filter Chips */}
           <View style={styles.filterRow}>
             {(["Toutes", "Absences", "En attente"] as const).map((tab) => {
               const active = filter === tab;
@@ -1411,8 +2188,8 @@ function AttendanceScreen({
                   style={[
                     styles.filterChip,
                     {
-                      backgroundColor: active ? colors.primarySoft : colors.surface,
-                      borderColor: active ? colors.primary : colors.border,
+                      backgroundColor: active ? (isDark ? colors.accent : "#102B55") : colors.surface,
+                      borderColor: active ? "transparent" : colors.border,
                     },
                   ]}
                   onPress={() => setFilter(tab)}
@@ -1422,7 +2199,7 @@ function AttendanceScreen({
                     style={[
                       styles.filterChipText,
                       {
-                        color: active ? colors.primary : colors.textSecondary,
+                        color: active ? (isDark ? "#081A33" : "#FFFFFF") : colors.textSecondary,
                         fontWeight: active ? "700" : "500",
                       },
                     ]}
@@ -1438,7 +2215,11 @@ function AttendanceScreen({
             <View
               style={[
                 styles.recordList,
-                { backgroundColor: colors.surface, borderColor: colors.border },
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  shadowColor: isDark ? "#000" : "#102B55",
+                },
               ]}
             >
               {filteredRecords.map((r, i) => (
@@ -1495,21 +2276,24 @@ function AttendanceScreen({
             </View>
           </SubtleFadeTransition>
 
-          <TouchableOpacity
+          <PressableScale
             style={[
               styles.actionCard,
-              { backgroundColor: colors.surface, borderColor: colors.border },
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                shadowColor: isDark ? "#000" : "#102B55",
+              },
             ]}
             onPress={() => navigate("scanner")}
-            activeOpacity={0.8}
           >
             <View
               style={[
                 styles.actionIcon,
-                { backgroundColor: colors.primarySoft },
+                { backgroundColor: colors.accentSoft },
               ]}
             >
-              <AppIcon name="camera" size={18} color={colors.primary} />
+              <AppIcon name="camera" size={18} color={colors.accent} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.actionCardTitle, { color: colors.text }]}>
@@ -1525,7 +2309,7 @@ function AttendanceScreen({
               </Text>
             </View>
             <AppIcon name="chevron" size={18} color={colors.textSecondary} />
-          </TouchableOpacity>
+          </PressableScale>
         </ScrollView>
       </View>
     );
@@ -1537,7 +2321,7 @@ function AttendanceScreen({
   const allMarked = Object.keys(states).length === students.length;
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.surfaceMuted }}>
+    <View style={{ flex: 1, backgroundColor: "transparent" }}>
       <AppHeader
         title="Enregistrer les présences"
         subtitle="Architecture logicielle · ING2-B"
@@ -1546,8 +2330,9 @@ function AttendanceScreen({
         lang={lang}
         onBack={() => navigate("class")}
         colors={colors}
+        isDark={isDark}
       />
-      <ScrollView contentContainerStyle={styles.screenContent}>
+      <ScrollView contentContainerStyle={styles.screenContent} showsVerticalScrollIndicator={false}>
         {!online && (
           <View style={[styles.networkWarning, { backgroundColor: colors.warningSoft }]}>
             <AppIcon name="wifiOff" size={18} color={colors.warning} />
@@ -1555,7 +2340,7 @@ function AttendanceScreen({
               <Text style={[styles.networkWarningTitle, { color: colors.warning }]}>
                 Connexion requise
               </Text>
-              <Text style={[styles.networkWarningDesc, { color: colors.warning }]}>
+              <Text style={[styles.networkWarningDesc, { color: colors.textSecondary }]}>
                 Une connexion active est nécessaire pour enregistrer et valider les présences.
               </Text>
             </View>
@@ -1582,7 +2367,11 @@ function AttendanceScreen({
         <View
           style={[
             styles.rosterList,
-            { backgroundColor: colors.surface, borderColor: colors.border },
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              shadowColor: isDark ? "#000" : "#102B55",
+            },
           ]}
         >
           {students.map((student, index) => {
@@ -1673,15 +2462,16 @@ function AttendanceScreen({
           style={[
             styles.stickySubmit,
             {
-              backgroundColor: colors.surface,
+              backgroundColor: colors.card,
               borderColor: colors.border,
+              shadowColor: isDark ? "#000" : "#102B55",
             },
           ]}
         >
           <Text style={[styles.stickySubmitCount, { color: colors.textSecondary }]}>
             {presentCount} présents · {absentCount} absents
           </Text>
-          <TouchableOpacity
+          <PressableScale
             style={[
               styles.primaryButton,
               {
@@ -1692,16 +2482,18 @@ function AttendanceScreen({
             ]}
             disabled={!online || !allMarked}
             onPress={() => navigate("submission")}
-            activeOpacity={0.8}
           >
             <Text style={styles.primaryButtonText}>Confirmer</Text>
-          </TouchableOpacity>
+          </PressableScale>
         </View>
       </ScrollView>
     </View>
   );
 }
 
+/**
+ * 5. ClassDetailsScreen
+ */
 function ClassDetailsScreen({
   role,
   online,
@@ -1709,18 +2501,20 @@ function ClassDetailsScreen({
   navigate,
   lang,
   colors,
+  isDark,
 }: {
   role: Role;
   online: boolean;
   toggleOnline: () => void;
   navigate: (s: Screen) => void;
   lang: Lang;
-  colors: ReturnType<typeof getColors>;
+  colors: ThemeColors;
+  isDark: boolean;
 }) {
   const teacher = role === "teacher";
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.surfaceMuted }}>
+    <View style={{ flex: 1, backgroundColor: "transparent" }}>
       <AppHeader
         title={teacher ? "Architecture logicielle" : "Réseaux informatiques"}
         subtitle="Détails du cours"
@@ -1729,28 +2523,33 @@ function ClassDetailsScreen({
         lang={lang}
         onBack={() => navigate("home")}
         colors={colors}
+        isDark={isDark}
       />
-      <ScrollView contentContainerStyle={styles.screenContent}>
+      <ScrollView contentContainerStyle={styles.screenContent} showsVerticalScrollIndicator={false}>
         {!online && <OfflineNotice colors={colors} />}
 
         <View
           style={[
             styles.courseHero,
-            { backgroundColor: colors.surface, borderColor: colors.border },
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              shadowColor: isDark ? "#000" : "#102B55",
+            },
           ]}
         >
           <View
             style={[
               styles.courseCodeBadge,
-              { backgroundColor: colors.primarySoft },
+              { backgroundColor: colors.accentSoft, borderColor: "rgba(233, 181, 68, 0.4)" },
             ]}
           >
-            <Text style={[styles.courseCodeText, { color: colors.primary }]}>
+            <Text style={[styles.courseCodeText, { color: colors.accentText }]}>
               {teacher ? "AL" : "RI"}
             </Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.sectionKicker, { color: colors.textSecondary }]}>
+            <Text style={[styles.sectionKicker, { color: isDark ? colors.accent : colors.secondary }]}>
               Mardi 18 mars 2025
             </Text>
             <Text style={[styles.courseHeroTitle, { color: colors.text }]}>
@@ -1766,10 +2565,14 @@ function ClassDetailsScreen({
           <View
             style={[
               styles.detailGridCell,
-              { backgroundColor: colors.surface, borderColor: colors.border },
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                shadowColor: isDark ? "#000" : "#102B55",
+              },
             ]}
           >
-            <AppIcon name="clock" size={18} color={colors.primary} />
+            <AppIcon name="clock" size={18} color={colors.accent} />
             <View style={{ marginLeft: 8 }}>
               <Text style={[styles.detailCellLabel, { color: colors.textSecondary }]}>
                 Horaire
@@ -1782,10 +2585,14 @@ function ClassDetailsScreen({
           <View
             style={[
               styles.detailGridCell,
-              { backgroundColor: colors.surface, borderColor: colors.border },
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                shadowColor: isDark ? "#000" : "#102B55",
+              },
             ]}
           >
-            <AppIcon name="map" size={18} color={colors.primary} />
+            <AppIcon name="map" size={18} color={colors.accent} />
             <View style={{ marginLeft: 8 }}>
               <Text style={[styles.detailCellLabel, { color: colors.textSecondary }]}>
                 Salle
@@ -1800,7 +2607,11 @@ function ClassDetailsScreen({
         <View
           style={[
             styles.statusPanel,
-            { backgroundColor: colors.surface, borderColor: colors.border },
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              shadowColor: isDark ? "#000" : "#102B55",
+            },
           ]}
         >
           <View>
@@ -1824,40 +2635,42 @@ function ClassDetailsScreen({
                 </Text>
               </View>
             )}
-            <TouchableOpacity
+            <PressableScale
               style={[
                 styles.primaryButton,
                 { backgroundColor: colors.primaryStrong, opacity: !online ? 0.5 : 1 },
               ]}
               disabled={!online}
               onPress={() => navigate("attendance")}
-              activeOpacity={0.8}
             >
               <AppIcon name="check" size={18} color="#ffffff" />
               <Text style={[styles.primaryButtonText, { marginLeft: 8 }]}>
                 Enregistrer les présences
               </Text>
-            </TouchableOpacity>
+            </PressableScale>
 
-            <TouchableOpacity
+            <PressableScale
               style={[
                 styles.secondaryButton,
                 { backgroundColor: colors.surface, borderColor: colors.border },
               ]}
               onPress={() => navigate("announcement")}
-              activeOpacity={0.8}
             >
               <AppIcon name="megaphone" size={18} color={colors.primary} />
-              <Text style={[styles.secondaryButtonText, { color: colors.primary, marginLeft: 8 }]}>
+              <Text style={[styles.secondaryButtonText, { color: colors.text, marginLeft: 8 }]}>
                 Envoyer une annonce
               </Text>
-            </TouchableOpacity>
+            </PressableScale>
           </View>
         ) : (
           <View
             style={[
               styles.announcementCard,
-              { backgroundColor: colors.surface, borderColor: colors.border },
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                shadowColor: isDark ? "#000" : "#102B55",
+              },
             ]}
           >
             <View style={styles.announcementHeader}>
@@ -1883,7 +2696,7 @@ function ClassDetailsScreen({
               Le cours aura lieu dans l’amphithéâtre A au lieu de la salle C04.
             </Text>
             <TouchableOpacity activeOpacity={0.7}>
-              <Text style={[styles.announcementAction, { color: colors.primary }]}>
+              <Text style={[styles.announcementAction, { color: colors.accent }]}>
                 Marquer comme lue
               </Text>
             </TouchableOpacity>
@@ -1894,6 +2707,9 @@ function ClassDetailsScreen({
   );
 }
 
+/**
+ * 6. NotificationsScreen
+ */
 function NotificationsScreen({
   role,
   online,
@@ -1901,13 +2717,15 @@ function NotificationsScreen({
   navigate,
   lang,
   colors,
+  isDark,
 }: {
   role: Role;
   online: boolean;
   toggleOnline: () => void;
   navigate: (s: Screen) => void;
   lang: Lang;
-  colors: ReturnType<typeof getColors>;
+  colors: ThemeColors;
+  isDark: boolean;
 }) {
   const notices =
     role === "student"
@@ -1959,7 +2777,7 @@ function NotificationsScreen({
         ];
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.surfaceMuted }}>
+    <View style={{ flex: 1, backgroundColor: "transparent" }}>
       <AppHeader
         title={copy[lang].notifications}
         subtitle="3 nouvelles"
@@ -1968,16 +2786,21 @@ function NotificationsScreen({
         lang={lang}
         onBack={() => navigate("home")}
         colors={colors}
+        isDark={isDark}
       />
-      <ScrollView contentContainerStyle={styles.screenContent}>
+      <ScrollView contentContainerStyle={styles.screenContent} showsVerticalScrollIndicator={false}>
         <View
           style={[
             styles.notificationList,
-            { backgroundColor: colors.surface, borderColor: colors.border },
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              shadowColor: isDark ? "#000" : "#102B55",
+            },
           ]}
         >
           {notices.map((n, i) => (
-            <TouchableOpacity
+            <PressableScale
               key={n.title}
               style={[
                 styles.notificationRow,
@@ -1988,15 +2811,14 @@ function NotificationsScreen({
                 },
               ]}
               onPress={() => i === 0 && navigate("class")}
-              activeOpacity={0.7}
             >
               <View
                 style={[
                   styles.noticeIconWrap,
-                  { backgroundColor: colors.primarySoft },
+                  { backgroundColor: colors.accentSoft },
                 ]}
               >
-                <AppIcon name={n.icon} size={16} color={colors.primary} />
+                <AppIcon name={n.icon} size={16} color={colors.accent} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.notificationTitleText, { color: colors.text }]}>
@@ -2010,7 +2832,7 @@ function NotificationsScreen({
                 </Text>
               </View>
               {n.unread && <View style={[styles.unreadDot, { backgroundColor: colors.danger }]} />}
-            </TouchableOpacity>
+            </PressableScale>
           ))}
         </View>
       </ScrollView>
@@ -2018,6 +2840,9 @@ function NotificationsScreen({
   );
 }
 
+/**
+ * 7. ScannerScreen
+ */
 function ScannerScreen({
   online,
   navigate,
@@ -2027,25 +2852,24 @@ function ScannerScreen({
   online: boolean;
   navigate: (s: Screen) => void;
   lang: Lang;
-  colors: ReturnType<typeof getColors>;
+  colors: ThemeColors;
 }) {
   return (
-    <View style={styles.scannerScreen}>
-      <SafeAreaView style={{ backgroundColor: "#111923" }}>
+    <View style={[styles.scannerScreen, { backgroundColor: "transparent" }]}>
+      <View style={styles.scannerHeaderWrap}>
         <View style={styles.scannerHeader}>
-          <TouchableOpacity
-            style={styles.backButton}
+          <PressableScale
+            style={styles.backButtonWrap}
             onPress={() => navigate("attendance")}
-            activeOpacity={0.7}
           >
-            <AppIcon name="back" size={24} color="#ffffff" />
-          </TouchableOpacity>
+            <AppIcon name="back" size={22} color="#ffffff" />
+          </PressableScale>
           <View style={{ flex: 1, marginLeft: 8 }}>
             <Text style={styles.scannerEyebrow}>Justificatif d’absence</Text>
             <Text style={styles.scannerHeaderTitle}>Scanner le certificat</Text>
           </View>
         </View>
-      </SafeAreaView>
+      </View>
 
       <View style={styles.cameraView}>
         <View style={styles.scanGuides}>
@@ -2069,39 +2893,42 @@ function ScannerScreen({
       </View>
 
       <View style={styles.cameraControls}>
-        <TouchableOpacity
+        <PressableScale
           style={styles.galleryButton}
           onPress={() => navigate("preview")}
-          activeOpacity={0.7}
         >
           <AppIcon name="file" size={20} color="#ffffff" />
-        </TouchableOpacity>
-        <TouchableOpacity
+        </PressableScale>
+        <PressableScale
           style={styles.captureButton}
           onPress={() => navigate("preview")}
-          activeOpacity={0.7}
         >
           <View style={styles.captureInnerCircle} />
-        </TouchableOpacity>
+        </PressableScale>
         <Text style={styles.pageCountBadge}>1 page</Text>
       </View>
     </View>
   );
 }
 
+/**
+ * 8. DocumentPreviewScreen
+ */
 function DocumentPreviewScreen({
   online,
   navigate,
   lang,
   colors,
+  isDark,
 }: {
   online: boolean;
   navigate: (s: Screen) => void;
   lang: Lang;
-  colors: ReturnType<typeof getColors>;
+  colors: ThemeColors;
+  isDark: boolean;
 }) {
   return (
-    <View style={{ flex: 1, backgroundColor: colors.surfaceMuted }}>
+    <View style={{ flex: 1, backgroundColor: "transparent" }}>
       <AppHeader
         title="Vérifier le document"
         subtitle="Page 1 sur 1"
@@ -2110,67 +2937,74 @@ function DocumentPreviewScreen({
         lang={lang}
         onBack={() => navigate("scanner")}
         colors={colors}
+        isDark={isDark}
       />
-      <ScrollView contentContainerStyle={styles.screenContent}>
-        <View style={styles.previewDocumentSheet}>
-          <View style={styles.paperLogo}>
-            <Text style={styles.paperLogoText}>CENTRE MÉDICAL</Text>
+      <ScrollView contentContainerStyle={styles.screenContent} showsVerticalScrollIndicator={false}>
+        <View
+          style={[
+            styles.previewDocumentSheet,
+            {
+              backgroundColor: isDark ? colors.surface : "#ffffff",
+              borderColor: colors.border,
+            },
+          ]}
+        >
+          <View style={[styles.paperLogo, { borderColor: colors.primary }]}>
+            <Text style={[styles.paperLogoText, { color: colors.primary }]}>CENTRE MÉDICAL</Text>
           </View>
-          <Text style={styles.paperDocTitle}>CERTIFICAT MÉDICAL</Text>
+          <Text style={[styles.paperDocTitle, { color: colors.text }]}>CERTIFICAT MÉDICAL</Text>
           <View style={styles.paperTextLines}>
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <View
                 key={i}
                 style={[
                   styles.paperLine,
+                  { backgroundColor: isDark ? colors.surfaceMuted : "#E4EAF1" },
                   i % 3 === 0 && { width: "65%" },
                 ]}
               />
             ))}
           </View>
-          <Text style={styles.paperSignature}>Signature et cachet</Text>
+          <Text style={[styles.paperSignature, { color: colors.textSecondary }]}>Signature et cachet</Text>
         </View>
 
         <View style={styles.editToolsRow}>
-          <TouchableOpacity
+          <PressableScale
             style={[
               styles.editToolBtn,
               { backgroundColor: colors.surface, borderColor: colors.border },
             ]}
             onPress={() => Alert.alert("Recadrer", "Mode recadrage activé")}
-            activeOpacity={0.7}
           >
             <AppIcon name="camera" size={16} color={colors.text} />
             <Text style={[styles.editToolBtnText, { color: colors.text }]}>
               Recadrer
             </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
+          </PressableScale>
+          <PressableScale
             style={[
               styles.editToolBtn,
               { backgroundColor: colors.surface, borderColor: colors.border },
             ]}
             onPress={() => Alert.alert("Ajuster", "Contraste et luminosité ajustés")}
-            activeOpacity={0.7}
           >
             <AppIcon name="more" size={16} color={colors.text} />
             <Text style={[styles.editToolBtnText, { color: colors.text }]}>
               Ajuster
             </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
+          </PressableScale>
+          <PressableScale
             style={[
               styles.editToolBtn,
               { backgroundColor: colors.surface, borderColor: colors.border },
             ]}
             onPress={() => navigate("scanner")}
-            activeOpacity={0.7}
           >
             <AppIcon name="file" size={16} color={colors.text} />
             <Text style={[styles.editToolBtnText, { color: colors.text }]}>
               Ajouter
             </Text>
-          </TouchableOpacity>
+          </PressableScale>
         </View>
 
         {!online && (
@@ -2182,41 +3016,45 @@ function DocumentPreviewScreen({
           </View>
         )}
 
-        <TouchableOpacity
+        <PressableScale
           style={[
             styles.primaryButton,
-            { backgroundColor: colors.primaryStrong, marginTop: 12 },
+            { backgroundColor: colors.primaryStrong, marginTop: 14 },
           ]}
           onPress={() => navigate("submission")}
-          activeOpacity={0.8}
         >
           <Text style={styles.primaryButtonText}>
             {online ? "Confirmer et envoyer" : "Enregistrer le brouillon"}
           </Text>
-        </TouchableOpacity>
+        </PressableScale>
       </ScrollView>
     </View>
   );
 }
 
+/**
+ * 9. SubmissionScreen
+ */
 function SubmissionScreen({
   role,
   online,
   navigate,
   lang,
   colors,
+  isDark,
 }: {
   role: Role;
   online: boolean;
   navigate: (s: Screen) => void;
   lang: Lang;
-  colors: ReturnType<typeof getColors>;
+  colors: ThemeColors;
+  isDark: boolean;
 }) {
   const teacher = role === "teacher";
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.surfaceMuted }}>
-      <ScrollView contentContainerStyle={styles.resultScreen}>
+    <View style={{ flex: 1, backgroundColor: "transparent" }}>
+      <ScrollView contentContainerStyle={styles.resultScreen} showsVerticalScrollIndicator={false}>
         <View
           style={[
             styles.resultIconWrap,
@@ -2229,7 +3067,7 @@ function SubmissionScreen({
             color={online ? colors.success : colors.warning}
           />
         </View>
-        <Text style={[styles.sectionKicker, { color: colors.textSecondary }]}>
+        <Text style={[styles.sectionKicker, { color: isDark ? colors.accent : colors.secondary }]}>
           {teacher ? "Présences" : "Justificatif"}
         </Text>
         <Text style={[styles.resultTitle, { color: colors.text }]}>
@@ -2250,7 +3088,11 @@ function SubmissionScreen({
         <View
           style={[
             styles.receiptBox,
-            { backgroundColor: colors.surface, borderColor: colors.border },
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              shadowColor: isDark ? "#000" : "#102B55",
+            },
           ]}
         >
           <View style={[styles.receiptRow, { borderBottomColor: colors.border }]}>
@@ -2287,16 +3129,15 @@ function SubmissionScreen({
           </View>
         </View>
 
-        <TouchableOpacity
+        <PressableScale
           style={[
             styles.primaryButton,
-            { backgroundColor: colors.primaryStrong, width: "100%", marginTop: 12 },
+            { backgroundColor: colors.primaryStrong, width: "100%", marginTop: 14 },
           ]}
           onPress={() => navigate("home")}
-          activeOpacity={0.8}
         >
           <Text style={styles.primaryButtonText}>Retour à l’accueil</Text>
-        </TouchableOpacity>
+        </PressableScale>
 
         {!teacher && (
           <TouchableOpacity
@@ -2304,28 +3145,33 @@ function SubmissionScreen({
             onPress={() => navigate("attendance")}
             activeOpacity={0.7}
           >
-            <Text style={[styles.ghostButtonText, { color: colors.primary }]}>
+            <Text style={[styles.ghostButtonText, { color: colors.accent }]}>
               Voir mes demandes
             </Text>
           </TouchableOpacity>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
+/**
+ * 10. AnnouncementScreen
+ */
 function AnnouncementScreen({
   online,
   toggleOnline,
   navigate,
   lang,
   colors,
+  isDark,
 }: {
   online: boolean;
   toggleOnline: () => void;
   navigate: (s: Screen) => void;
   lang: Lang;
-  colors: ReturnType<typeof getColors>;
+  colors: ThemeColors;
+  isDark: boolean;
 }) {
   const [sent, setSent] = useState(false);
   const [title, setTitle] = useState("Retard prévu");
@@ -2334,7 +3180,7 @@ function AnnouncementScreen({
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.surfaceMuted }}>
+    <View style={{ flex: 1, backgroundColor: "transparent" }}>
       <AppHeader
         title="Nouvelle annonce"
         subtitle="Architecture logicielle · ING2-B"
@@ -2343,13 +3189,14 @@ function AnnouncementScreen({
         lang={lang}
         onBack={() => navigate("class")}
         colors={colors}
+        isDark={isDark}
       />
-      <ScrollView contentContainerStyle={styles.screenContent}>
+      <ScrollView contentContainerStyle={styles.screenContent} showsVerticalScrollIndicator={false}>
         {sent ? (
           <View
             style={[
               styles.inlineSuccessBox,
-              { backgroundColor: colors.successSoft },
+              { backgroundColor: colors.successSoft, borderColor: "rgba(34, 160, 107, 0.3)" },
             ]}
           >
             <AppIcon name="check" size={28} color={colors.success} />
@@ -2367,16 +3214,20 @@ function AnnouncementScreen({
             <View
               style={[
                 styles.recipientCard,
-                { backgroundColor: colors.surface, borderColor: colors.border },
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  shadowColor: isDark ? "#000" : "#102B55",
+                },
               ]}
             >
               <View
                 style={[
                   styles.avatarGroup,
-                  { backgroundColor: colors.primarySoft },
+                  { backgroundColor: colors.accentSoft },
                 ]}
               >
-                <Text style={[styles.avatarGroupText, { color: colors.primary }]}>
+                <Text style={[styles.avatarGroupText, { color: colors.accentText }]}>
                   2B
                 </Text>
               </View>
@@ -2431,10 +3282,14 @@ function AnnouncementScreen({
             <View
               style={[
                 styles.messagePreview,
-                { backgroundColor: colors.surface, borderColor: colors.border },
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  shadowColor: isDark ? "#000" : "#102B55",
+                },
               ]}
             >
-              <Text style={[styles.messagePreviewLabel, { color: colors.textSecondary }]}>
+              <Text style={[styles.messagePreviewLabel, { color: colors.accent }]}>
                 Aperçu étudiant
               </Text>
               <Text style={[styles.messagePreviewTitle, { color: colors.text }]}>
@@ -2445,21 +3300,20 @@ function AnnouncementScreen({
               </Text>
             </View>
 
-            <TouchableOpacity
+            <PressableScale
               style={[
                 styles.primaryButton,
                 {
                   backgroundColor: colors.primaryStrong,
                   opacity: !online ? 0.5 : 1,
-                  marginTop: 8,
+                  marginTop: 10,
                 },
               ]}
               disabled={!online}
               onPress={() => setSent(true)}
-              activeOpacity={0.8}
             >
               <Text style={styles.primaryButtonText}>Envoyer l’annonce</Text>
-            </TouchableOpacity>
+            </PressableScale>
 
             {!online && (
               <View style={[styles.inlineWarning, { backgroundColor: colors.warningSoft }]}>
@@ -2473,34 +3327,38 @@ function AnnouncementScreen({
         )}
 
         {sent && (
-          <TouchableOpacity
+          <PressableScale
             style={[
               styles.primaryButton,
               { backgroundColor: colors.primaryStrong, marginTop: 20 },
             ]}
             onPress={() => navigate("class")}
-            activeOpacity={0.8}
           >
             <Text style={styles.primaryButtonText}>Retour au cours</Text>
-          </TouchableOpacity>
+          </PressableScale>
         )}
       </ScrollView>
     </View>
   );
 }
 
+/**
+ * 11. RequestsScreen
+ */
 function RequestsScreen({
   online,
   toggleOnline,
   navigate,
   lang,
   colors,
+  isDark,
 }: {
   online: boolean;
   toggleOnline: () => void;
   navigate: (s: Screen) => void;
   lang: Lang;
-  colors: ReturnType<typeof getColors>;
+  colors: ThemeColors;
+  isDark: boolean;
 }) {
   const [requestType, setRequestType] = useState("Signaler une absence prévue");
   const [date, setDate] = useState("Vendredi 21 mars 2025");
@@ -2512,7 +3370,7 @@ function RequestsScreen({
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.surfaceMuted }}>
+    <View style={{ flex: 1, backgroundColor: "transparent" }}>
       <AppHeader
         title="Demandes administratives"
         subtitle="Enseignant"
@@ -2521,8 +3379,9 @@ function RequestsScreen({
         lang={lang}
         onBack={() => navigate("home")}
         colors={colors}
+        isDark={isDark}
       />
-      <ScrollView contentContainerStyle={styles.screenContent}>
+      <ScrollView contentContainerStyle={styles.screenContent} showsVerticalScrollIndicator={false}>
         <View style={styles.sectionHeading}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
             Nouvelle demande
@@ -2586,19 +3445,18 @@ function RequestsScreen({
           />
         </View>
 
-        <TouchableOpacity
+        <PressableScale
           style={[
             styles.primaryButton,
-            { backgroundColor: colors.primaryStrong, opacity: !online ? 0.5 : 1 },
+            { backgroundColor: colors.primaryStrong, opacity: !online ? 0.5 : 1, marginTop: 4 },
           ]}
           disabled={!online}
           onPress={submit}
-          activeOpacity={0.8}
         >
           <Text style={styles.primaryButtonText}>Soumettre la demande</Text>
-        </TouchableOpacity>
+        </PressableScale>
 
-        <View style={[styles.sectionHeading, { marginTop: 24 }]}>
+        <View style={[styles.sectionHeading, { marginTop: 28 }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
             Demandes récentes
           </Text>
@@ -2607,7 +3465,11 @@ function RequestsScreen({
         <View
           style={[
             styles.requestHistoryRow,
-            { backgroundColor: colors.surface, borderColor: colors.border },
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              shadowColor: isDark ? "#000" : "#102B55",
+            },
           ]}
         >
           <View>
@@ -2624,7 +3486,12 @@ function RequestsScreen({
         <View
           style={[
             styles.requestHistoryRow,
-            { backgroundColor: colors.surface, borderColor: colors.border, marginTop: 8 },
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              marginTop: 12,
+              shadowColor: isDark ? "#000" : "#102B55",
+            },
           ]}
         >
           <View>
@@ -2659,6 +3526,9 @@ function RequestsScreen({
   );
 }
 
+/**
+ * 12. ProfileScreen
+ */
 function ProfileScreen({
   role,
   online,
@@ -2669,6 +3539,7 @@ function ProfileScreen({
   theme,
   setTheme,
   colors,
+  isDark,
 }: {
   role: Role;
   online: boolean;
@@ -2678,14 +3549,15 @@ function ProfileScreen({
   setLang: (l: Lang) => void;
   theme: Theme;
   setTheme: (t: Theme) => void;
-  colors: ReturnType<typeof getColors>;
+  colors: ThemeColors;
+  isDark: boolean;
 }) {
   const teacher = role === "teacher";
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.surfaceMuted }}>
+    <View style={{ flex: 1, backgroundColor: "transparent" }}>
       <AppHeader
         title="Profil et réglages"
         subtitle="Compte institutionnel"
@@ -2693,37 +3565,44 @@ function ProfileScreen({
         onToggleOnline={toggleOnline}
         lang={lang}
         colors={colors}
+        isDark={isDark}
       />
-      <ScrollView contentContainerStyle={styles.screenContent}>
+      <ScrollView contentContainerStyle={styles.screenContent} showsVerticalScrollIndicator={false}>
+        {/* Identity Card */}
         <View
           style={[
             styles.identityCard,
-            { backgroundColor: colors.surface, borderColor: colors.border },
+            {
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              shadowColor: isDark ? "#000" : "#102B55",
+            },
           ]}
         >
           <View
             style={[
               styles.avatarLarge,
-              { backgroundColor: colors.primarySoft },
+              { backgroundColor: colors.accentSoft, borderColor: "rgba(233, 181, 68, 0.4)" },
             ]}
           >
-            <Text style={[styles.avatarLargeText, { color: colors.primary }]}>
+            <Text style={[styles.avatarLargeText, { color: colors.accentText }]}>
               {teacher ? "SM" : "AB"}
             </Text>
           </View>
-          <View style={{ flex: 1, marginLeft: 12 }}>
+          <View style={{ flex: 1, marginLeft: 16 }}>
             <Text style={[styles.identityName, { color: colors.text }]}>
               {teacher ? "Sonia Mansouri" : "Amine Ben Amor"}
             </Text>
             <Text style={[styles.identityDept, { color: colors.textSecondary }]}>
               {teacher ? "Département Informatique" : "ING2 · Groupe B"}
             </Text>
-            <Text style={[styles.identityEmail, { color: colors.textSecondary }]}>
+            <Text style={[styles.identityEmail, { color: colors.accent }]}>
               {teacher ? "sonia.mansouri@issatk.rnu.tn" : "2023-ING-0142"}
             </Text>
           </View>
         </View>
 
+        {/* Appearance Theme Selector */}
         <View style={styles.settingsSection}>
           <Text style={[styles.settingsSectionTitle, { color: colors.textSecondary }]}>
             Apparence
@@ -2732,51 +3611,60 @@ function ProfileScreen({
             {(["light", "dark", "system"] as Theme[]).map((t) => {
               const selected = theme === t;
               return (
-                <TouchableOpacity
+                <PressableScale
                   key={t}
                   style={[
                     styles.themeOptionBtn,
                     {
-                      backgroundColor: colors.surface,
-                      borderColor: selected ? colors.primary : colors.border,
+                      backgroundColor: colors.card,
+                      borderColor: selected ? colors.accent : colors.border,
                       borderWidth: selected ? 2 : 1,
+                      shadowColor: isDark ? "#000" : "#102B55",
                     },
                   ]}
                   onPress={() => setTheme(t)}
-                  activeOpacity={0.7}
                 >
                   <View
                     style={[
                       styles.themePreviewBox,
                       t === "light"
-                        ? { backgroundColor: "#f1f3f5" }
+                        ? { backgroundColor: "#F4F7FB" }
                         : t === "dark"
-                        ? { backgroundColor: "#141c26" }
-                        : { backgroundColor: "#e2e6eb" },
+                        ? { backgroundColor: "#081A33" }
+                        : { backgroundColor: "#E4EAF1" },
                     ]}
                   >
                     <View
                       style={[
                         styles.themePreviewBar,
-                        { backgroundColor: t === "dark" ? "#8291a0" : "#b5bec8" },
+                        { backgroundColor: t === "dark" ? "#102B55" : "#174A83" },
                       ]}
                     />
                     <View
                       style={[
                         styles.themePreviewBlock,
-                        { backgroundColor: t === "dark" ? "#26313e" : "#ffffff" },
+                        { backgroundColor: t === "dark" ? "#142F52" : "#FFFFFF" },
                       ]}
                     />
                   </View>
-                  <Text style={[styles.themeOptionLabel, { color: colors.text }]}>
+                  <Text
+                    style={[
+                      styles.themeOptionLabel,
+                      {
+                        color: selected ? colors.accent : colors.text,
+                        fontWeight: selected ? "800" : "600",
+                      },
+                    ]}
+                  >
                     {t === "light" ? "Clair" : t === "dark" ? "Sombre" : "Système"}
                   </Text>
-                </TouchableOpacity>
+                </PressableScale>
               );
             })}
           </View>
         </View>
 
+        {/* Preferences Section */}
         <View style={styles.settingsSection}>
           <Text style={[styles.settingsSectionTitle, { color: colors.textSecondary }]}>
             Préférences
@@ -2784,25 +3672,29 @@ function ProfileScreen({
           <View
             style={[
               styles.settingsBlock,
-              { backgroundColor: colors.surface, borderColor: colors.border },
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                shadowColor: isDark ? "#000" : "#102B55",
+              },
             ]}
           >
             <TouchableOpacity
               style={[styles.settingsRow, { borderBottomColor: colors.border }]}
-              onPress={() => setLang(lang === "fr" ? "en" : "fr")}
+              onPress={() => setLang(lang === "fr" ? "en" : lang === "en" ? "ar" : "fr")}
               activeOpacity={0.7}
             >
-              <AppIcon name="language" size={18} color={colors.primary} />
-              <View style={{ flex: 1, marginLeft: 10 }}>
+              <AppIcon name="language" size={19} color={colors.primary} />
+              <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text style={[styles.settingsRowTitle, { color: colors.text }]}>
-                  Langue
+                  {lang === "fr" ? "Langue" : lang === "en" ? "Language" : "اللغة"}
                 </Text>
                 <Text style={[styles.settingsRowSub, { color: colors.textSecondary }]}>
-                  {lang === "fr" ? "Français" : "English"}
+                  {lang === "fr" ? "Français" : lang === "en" ? "English" : "العربية"}
                 </Text>
               </View>
               <Text style={[styles.settingsRowValue, { color: colors.textSecondary }]}>
-                {lang === "fr" ? "FR" : "EN"}
+                {lang === "fr" ? "FR" : lang === "en" ? "EN" : "عربي"}
               </Text>
               <AppIcon name="chevron" size={16} color={colors.textSecondary} />
             </TouchableOpacity>
@@ -2818,8 +3710,8 @@ function ProfileScreen({
               onPress={() => setNotificationsEnabled(!notificationsEnabled)}
               activeOpacity={0.7}
             >
-              <AppIcon name="bell" size={18} color={colors.primary} />
-              <View style={{ flex: 1, marginLeft: 10 }}>
+              <AppIcon name="bell" size={19} color={colors.accent} />
+              <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text style={[styles.settingsRowTitle, { color: colors.text }]}>
                   Notifications
                 </Text>
@@ -2832,7 +3724,7 @@ function ProfileScreen({
                   styles.switchTrack,
                   {
                     backgroundColor: notificationsEnabled
-                      ? colors.primary
+                      ? colors.accent
                       : colors.border,
                   },
                 ]}
@@ -2852,8 +3744,8 @@ function ProfileScreen({
                 onPress={() => navigate("requests")}
                 activeOpacity={0.7}
               >
-                <AppIcon name="file" size={18} color={colors.primary} />
-                <View style={{ flex: 1, marginLeft: 10 }}>
+                <AppIcon name="file" size={19} color={colors.primary} />
+                <View style={{ flex: 1, marginLeft: 12 }}>
                   <Text style={[styles.settingsRowTitle, { color: colors.text }]}>
                     Mes demandes
                   </Text>
@@ -2867,16 +3759,33 @@ function ProfileScreen({
           </View>
         </View>
 
-        <TouchableOpacity
-          style={[styles.dangerButton, { backgroundColor: colors.dangerSoft, marginTop: 20 }]}
+        <PressableScale
+          style={[styles.dangerButton, { backgroundColor: colors.dangerSoft, marginTop: 24 }]}
           onPress={() => setLogoutModalVisible(true)}
-          activeOpacity={0.8}
         >
-          <AppIcon name="logout" size={18} color={colors.danger} />
-          <Text style={[styles.dangerButtonText, { color: colors.danger, marginLeft: 8 }]}>
-            {lang === "fr" ? "Se déconnecter" : "Sign Out"}
-          </Text>
-        </TouchableOpacity>
+          <View
+            style={[
+              styles.buttonContentRow,
+              { flexDirection: lang === "ar" ? "row-reverse" : "row" },
+            ]}
+          >
+            <View style={styles.buttonIconWrap}>
+              <AppIcon name="logout" size={18} color={colors.danger} />
+            </View>
+            <Text
+              style={[
+                styles.dangerButtonText,
+                {
+                  color: colors.danger,
+                  marginLeft: lang === "ar" ? 0 : 8,
+                  marginRight: lang === "ar" ? 8 : 0,
+                },
+              ]}
+            >
+              {buttonCopy[lang].signOut}
+            </Text>
+          </View>
+        </PressableScale>
 
         <Text style={[styles.appVersion, { color: colors.textSecondary }]}>
           My ISSATkr · Version 1.0 (Expo React Native)
@@ -2889,14 +3798,16 @@ function ProfileScreen({
             setLogoutModalVisible(false);
             navigate("login");
           }}
-          title={lang === "fr" ? "Déconnexion" : "Sign Out"}
+          title={buttonCopy[lang].signOut}
           message={
             lang === "fr"
               ? "Êtes-vous sûr de vouloir vous déconnecter de votre compte institutionnel ISSATK ?"
-              : "Are you sure you want to sign out of your institutional ISSATK account?"
+              : lang === "en"
+              ? "Are you sure you want to sign out of your institutional ISSATK account?"
+              : "هل أنت متأكد من رغبتك في تسجيل الخروج من حسابك الجامعي بالمعهد؟"
           }
-          confirmText={lang === "fr" ? "Déconnexion" : "Sign Out"}
-          cancelText={lang === "fr" ? "Annuler" : "Cancel"}
+          confirmText={buttonCopy[lang].signOut}
+          cancelText={buttonCopy[lang].cancel}
           colors={colors}
           icon="logout"
         />
@@ -2905,6 +3816,144 @@ function ProfileScreen({
   );
 }
 
+/* ==========================================================================
+   MAIN TABS PAGER (Horizontal swipe gestures between main tabs)
+   ========================================================================== */
+interface MainTabsPagerProps {
+  currentTab: Screen;
+  onTabChange: (screen: Screen) => void;
+  role: Role;
+  online: boolean;
+  toggleOnline: () => void;
+  navigate: (screen: Screen) => void;
+  lang: Lang;
+  setLang: (lang: Lang) => void;
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
+  colors: ThemeColors;
+  isDark: boolean;
+  scrollX: Animated.Value;
+  screenWidth: number;
+}
+
+const MAIN_TABS: Screen[] = ["home", "timetable", "attendance", "profile"];
+
+function MainTabsPager({
+  currentTab,
+  onTabChange,
+  role,
+  online,
+  toggleOnline,
+  navigate,
+  lang,
+  setLang,
+  theme,
+  setTheme,
+  colors,
+  isDark,
+  scrollX,
+  screenWidth,
+}: MainTabsPagerProps) {
+  const pagerRef = useRef<React.ElementRef<typeof ScrollView>>(null);
+  const isUserSwiping = useRef(false);
+
+  useEffect(() => {
+    if (!isUserSwiping.current) {
+      const targetIndex = MAIN_TABS.indexOf(currentTab);
+      if (targetIndex !== -1) {
+        pagerRef.current?.scrollTo({
+          x: targetIndex * screenWidth,
+          animated: true,
+        });
+      }
+    }
+  }, [currentTab, screenWidth]);
+
+  return (
+    <ScrollView
+      ref={pagerRef}
+      horizontal
+      pagingEnabled
+      showsHorizontalScrollIndicator={false}
+      bounces={false}
+      directionalLockEnabled={true}
+      scrollEventThrottle={16}
+      onScrollBeginDrag={() => {
+        isUserSwiping.current = true;
+      }}
+      onScroll={Animated.event(
+        [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+        { useNativeDriver: false }
+      )}
+      onMomentumScrollEnd={(e) => {
+        isUserSwiping.current = false;
+        const offset = e.nativeEvent.contentOffset.x;
+        const pageIdx = Math.round(offset / screenWidth);
+        const targetTab = MAIN_TABS[pageIdx];
+        if (targetTab && targetTab !== currentTab) {
+          onTabChange(targetTab);
+        }
+      }}
+      style={{ flex: 1, width: screenWidth }}
+      contentContainerStyle={{ width: screenWidth * 4 }}
+    >
+      <View style={{ width: screenWidth, flex: 1 }}>
+        <HomeScreen
+          role={role}
+          online={online}
+          toggleOnline={toggleOnline}
+          navigate={navigate}
+          lang={lang}
+          colors={colors}
+          isDark={isDark}
+        />
+      </View>
+
+      <View style={{ width: screenWidth, flex: 1 }}>
+        <TimetableScreen
+          role={role}
+          online={online}
+          toggleOnline={toggleOnline}
+          navigate={navigate}
+          lang={lang}
+          colors={colors}
+          isDark={isDark}
+        />
+      </View>
+
+      <View style={{ width: screenWidth, flex: 1 }}>
+        <AttendanceScreen
+          role={role}
+          online={online}
+          toggleOnline={toggleOnline}
+          navigate={navigate}
+          lang={lang}
+          colors={colors}
+          isDark={isDark}
+        />
+      </View>
+
+      <View style={{ width: screenWidth, flex: 1 }}>
+        <ProfileScreen
+          role={role}
+          online={online}
+          toggleOnline={toggleOnline}
+          navigate={navigate}
+          lang={lang}
+          setLang={setLang}
+          theme={theme}
+          setTheme={setTheme}
+          colors={colors}
+          isDark={isDark}
+        />
+      </View>
+    </ScrollView>
+  );
+}
+
+/* ==========================================================================
+   ROOT APPLICATION
+   ========================================================================== */
 export default function App() {
   const [role, setRole] = useState<Role>("student");
   const [screen, setScreen] = useState<Screen>("login");
@@ -2912,81 +3961,35 @@ export default function App() {
   const [lang, setLang] = useState<Lang>("fr");
   const [online, setOnline] = useState(true);
 
-  const effectiveDark = theme === "dark";
+  const { width: screenWidth } = useWindowDimensions();
+  const systemColorScheme = useColorScheme();
+  const effectiveDark =
+    theme === "dark" || (theme === "system" && systemColorScheme === "dark");
   const colors = useMemo(() => getColors(effectiveDark), [effectiveDark]);
-  const showNav = ![
-    "login",
-    "class",
-    "notifications",
-    "scanner",
-    "preview",
-    "submission",
-    "announcement",
-    "requests",
-  ].includes(screen);
+
+  const scrollX = useRef(new Animated.Value(0)).current;
+  const isMainTab = MAIN_TABS.includes(screen);
+
+  const handleTabNavigate = useCallback((newScreen: Screen) => {
+    setScreen(newScreen);
+  }, []);
 
   return (
     <SafeAreaProvider>
-      <SafeAreaView
-        style={[styles.rootContainer, { backgroundColor: colors.surface }]}
-        edges={["top", "left", "right"]}
-      >
+      <View style={[styles.rootContainer, { backgroundColor: colors.background }]}>
         <StatusBar style={effectiveDark ? "light" : "dark"} />
 
-        {/* Global Demo Switcher pill (allows instant role switching on device) */}
-        {screen !== "login" && (
-          <View
-            style={[
-              styles.demoRoleBanner,
-              { backgroundColor: colors.surface, borderBottomColor: colors.border },
-            ]}
-          >
-            <View style={styles.demoRoleBadge}>
-              <Text style={[styles.demoRoleLabel, { color: colors.textSecondary }]}>
-                Mode test:
-              </Text>
-              <TouchableOpacity
-                style={[
-                  styles.demoRoleBtn,
-                  role === "student" && { backgroundColor: colors.primaryStrong },
-                ]}
-                onPress={() => setRole("student")}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={[
-                    styles.demoRoleBtnText,
-                    { color: role === "student" ? "#ffffff" : colors.textSecondary },
-                  ]}
-                >
-                  Étudiant
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.demoRoleBtn,
-                  role === "teacher" && { backgroundColor: colors.primaryStrong },
-                ]}
-                onPress={() => setRole("teacher")}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={[
-                    styles.demoRoleBtnText,
-                    { color: role === "teacher" ? "#ffffff" : colors.textSecondary },
-                  ]}
-                >
-                  Enseignant
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
+        {/* Global Stationary Architectural Background Layer (Fixed across all screens) */}
+        <ArchitecturalHeaderBackground isDark={effectiveDark} colors={colors} />
 
-        {/* Screen Router */}
-        <View style={{ flex: 1 }}>
-          <ScreenTransition screenKey={screen}>
-            {screen === "login" && (
+        <SafeAreaView
+          style={styles.rootSafeArea}
+          edges={["top", "left", "right"]}
+        >
+          {/* Screen Routing & Paging Area */}
+          <View style={{ flex: 1, backgroundColor: "transparent" }}>
+          {screen === "login" && (
+            <ScreenTransition screenKey="login">
               <LoginScreen
                 onLogin={() => setScreen("home")}
                 role={role}
@@ -2996,39 +3999,32 @@ export default function App() {
                 theme={theme}
                 setTheme={setTheme}
                 colors={colors}
+                isDark={effectiveDark}
               />
-            )}
-            {screen === "home" && (
-              <HomeScreen
-                role={role}
-                online={online}
-                toggleOnline={() => setOnline(!online)}
-                navigate={setScreen}
-                lang={lang}
-                colors={colors}
-              />
-            )}
-            {screen === "timetable" && (
-              <TimetableScreen
-                role={role}
-                online={online}
-                toggleOnline={() => setOnline(!online)}
-                navigate={setScreen}
-                lang={lang}
-                colors={colors}
-              />
-            )}
-            {screen === "attendance" && (
-              <AttendanceScreen
-                role={role}
-                online={online}
-                toggleOnline={() => setOnline(!online)}
-                navigate={setScreen}
-                lang={lang}
-                colors={colors}
-              />
-            )}
-            {screen === "class" && (
+            </ScreenTransition>
+          )}
+
+          {isMainTab && (
+            <MainTabsPager
+              currentTab={screen}
+              onTabChange={handleTabNavigate}
+              role={role}
+              online={online}
+              toggleOnline={() => setOnline(!online)}
+              navigate={setScreen}
+              lang={lang}
+              setLang={setLang}
+              theme={theme}
+              setTheme={setTheme}
+              colors={colors}
+              isDark={effectiveDark}
+              scrollX={scrollX}
+              screenWidth={screenWidth}
+            />
+          )}
+
+          {screen === "class" && (
+            <ScreenTransition screenKey="class">
               <ClassDetailsScreen
                 role={role}
                 online={online}
@@ -3036,9 +4032,13 @@ export default function App() {
                 navigate={setScreen}
                 lang={lang}
                 colors={colors}
+                isDark={effectiveDark}
               />
-            )}
-            {screen === "notifications" && (
+            </ScreenTransition>
+          )}
+
+          {screen === "notifications" && (
+            <ScreenTransition screenKey="notifications">
               <NotificationsScreen
                 role={role}
                 online={online}
@@ -3046,310 +4046,509 @@ export default function App() {
                 navigate={setScreen}
                 lang={lang}
                 colors={colors}
+                isDark={effectiveDark}
               />
-            )}
-            {screen === "scanner" && (
+            </ScreenTransition>
+          )}
+
+          {screen === "scanner" && (
+            <ScreenTransition screenKey="scanner">
               <ScannerScreen
                 online={online}
                 navigate={setScreen}
                 lang={lang}
                 colors={colors}
               />
-            )}
-            {screen === "preview" && (
+            </ScreenTransition>
+          )}
+
+          {screen === "preview" && (
+            <ScreenTransition screenKey="preview">
               <DocumentPreviewScreen
                 online={online}
                 navigate={setScreen}
                 lang={lang}
                 colors={colors}
+                isDark={effectiveDark}
               />
-            )}
-            {screen === "submission" && (
+            </ScreenTransition>
+          )}
+
+          {screen === "submission" && (
+            <ScreenTransition screenKey="submission">
               <SubmissionScreen
                 role={role}
                 online={online}
                 navigate={setScreen}
                 lang={lang}
                 colors={colors}
+                isDark={effectiveDark}
               />
-            )}
-            {screen === "announcement" && (
+            </ScreenTransition>
+          )}
+
+          {screen === "announcement" && (
+            <ScreenTransition screenKey="announcement">
               <AnnouncementScreen
                 online={online}
                 toggleOnline={() => setOnline(!online)}
                 navigate={setScreen}
                 lang={lang}
                 colors={colors}
+                isDark={effectiveDark}
               />
-            )}
-            {screen === "requests" && (
+            </ScreenTransition>
+          )}
+
+          {screen === "requests" && (
+            <ScreenTransition screenKey="requests">
               <RequestsScreen
                 online={online}
                 toggleOnline={() => setOnline(!online)}
                 navigate={setScreen}
                 lang={lang}
                 colors={colors}
+                isDark={effectiveDark}
               />
-            )}
-            {screen === "profile" && (
-              <ProfileScreen
-                role={role}
-                online={online}
-                toggleOnline={() => setOnline(!online)}
-                navigate={setScreen}
-                lang={lang}
-                setLang={setLang}
-                theme={theme}
-                setTheme={setTheme}
-                colors={colors}
-              />
-            )}
-          </ScreenTransition>
+            </ScreenTransition>
+          )}
         </View>
 
-        {showNav && (
+        {isMainTab && (
           <BottomNav
-            screen={screen}
-            onNavigate={setScreen}
+            currentTab={screen}
+            onNavigate={handleTabNavigate}
             lang={lang}
             colors={colors}
+            isDark={effectiveDark}
+            scrollX={scrollX}
+            screenWidth={screenWidth}
           />
         )}
-      </SafeAreaView>
+        </SafeAreaView>
+      </View>
     </SafeAreaProvider>
   );
 }
 
+/* ==========================================================================
+   CENTRALIZED STYLESHEET — SPACIOUS, BALANCED, PREMIUM HERITAGE NAVY
+   ========================================================================== */
 const styles = StyleSheet.create({
   rootContainer: {
     flex: 1,
+    position: "relative",
   },
+  rootSafeArea: {
+    flex: 1,
+    backgroundColor: "transparent",
+  },
+
+  /* Demo banner */
   demoRoleBanner: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
+    paddingHorizontal: 20,
+    paddingVertical: 5,
     borderBottomWidth: 1,
     alignItems: "center",
+    zIndex: 10,
   },
   demoRoleBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 8,
   },
   demoRoleLabel: {
     fontSize: 11,
     fontWeight: "600",
   },
   demoRoleBtn: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 4,
-    borderRadius: 6,
+    borderRadius: 8,
   },
   demoRoleBtnText: {
     fontSize: 11,
     fontWeight: "700",
   },
-  appHeader: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+
+  /* ==========================================================================
+     PROMINENT STATIONARY ARCHITECTURAL BACKGROUND
+     - 70–75% of screen width
+     - 340px height
+     - Soft atmospheric mist feathering mask (0 visible bands, 0 rectangular boundary)
+     - Preserves building entrance, arches, sign, flag, palm trees
+     ========================================================================== */
+  archBgWrap: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    height: 340,
+    overflow: "hidden",
+    zIndex: 0,
+  },
+  archBgImage: {
+    position: "absolute",
+    top: 0,
+    right: -10,
+    height: 345,
+  },
+
+  /* ==========================================================================
+     HOME TOP BAR & GREETING SECTION (Matching Reference Image)
+     ========================================================================== */
+  homeTopBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 22,
+    paddingTop: 12,
+    paddingBottom: 8,
+    zIndex: 5,
+  },
+  homeTopActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  connectivity: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 5,
+  },
+  connectivityText: {
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  notificationBellCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    position: "relative",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  notificationRedDot: {
+    position: "absolute",
+    top: 9,
+    right: 10,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    borderWidth: 1.5,
+  },
+
+  /* Spacious Greeting Section */
+  homeGreetingSection: {
+    paddingTop: 16,
+    paddingBottom: 24,
+    maxWidth: "58%", // leaves right side open for prominent university building
+  },
+  greetingSalutation: {
+    fontSize: 24,
+    fontWeight: "700",
+    letterSpacing: -0.4,
+    lineHeight: 30,
+  },
+  greetingName: {
+    fontSize: 26,
+    fontWeight: "900",
+    letterSpacing: -0.5,
+    lineHeight: 32,
+    marginTop: 2,
+  },
+  greetingDateRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 8,
+  },
+  greetingDateText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+
+  /* ==========================================================================
+     STANDARD HEADER FOR OTHER SCREENS
+     ========================================================================== */
+  standardHeader: {
+    paddingHorizontal: 22,
+    paddingTop: 12,
+    paddingBottom: 14,
     borderBottomWidth: 1,
+    zIndex: 5,
   },
   headerLine: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  backButton: {
-    paddingRight: 8,
+  backButtonWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
   },
   titleStack: {
     flex: 1,
   },
+  subtitleLine: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginBottom: 3,
+  },
   eyebrow: {
     fontSize: 11,
     fontWeight: "700",
+    letterSpacing: 0.4,
     textTransform: "uppercase",
-    letterSpacing: 0.5,
   },
-  headerTitle: {
-    fontSize: 19,
-    fontWeight: "700",
-    letterSpacing: -0.3,
+  standardHeaderTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    letterSpacing: -0.4,
   },
   headerActions: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
   },
-  connectivity: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 14,
-    gap: 4,
-  },
-  connectivityText: {
-    fontSize: 10,
-    fontWeight: "700",
-  },
   iconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     borderWidth: 1,
     justifyContent: "center",
     alignItems: "center",
     position: "relative",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   unreadDotBadge: {
     position: "absolute",
-    top: 6,
-    right: 6,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    borderWidth: 1,
+    top: 7,
+    right: 7,
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    borderWidth: 1.5,
   },
+
+  /* ==========================================================================
+     SPACIOUS SCREEN CONTENT & SECTIONS
+     - 22px horizontal screen padding
+     - 26–30px major section spacing
+     - 16–20px card internal padding
+     - 110px bottom padding for smooth scrolling above bottom nav
+     ========================================================================== */
   screenContent: {
-    padding: 16,
-    paddingBottom: 40,
+    paddingHorizontal: 22,
+    paddingTop: 8,
+    paddingBottom: 110,
   },
   offlineNotice: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 12,
-    gap: 10,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 18,
+    gap: 12,
   },
   offlineNoticeTexts: {
     flex: 1,
   },
   offlineNoticeTitle: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "700",
   },
   offlineNoticeDesc: {
-    fontSize: 10,
+    fontSize: 11,
     marginTop: 2,
-    opacity: 0.9,
   },
+
+  /* Status Badge */
   badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
     alignSelf: "flex-start",
+    gap: 6,
+  },
+  badgeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   badgeText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "700",
   },
+
+  /* ==========================================================================
+     NEXT CLASS CARD (Exact Heritage Navy Reference Design)
+     ========================================================================== */
   nextCard: {
-    padding: 16,
-    borderRadius: 14,
-    shadowColor: "#0b294d",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
+    borderRadius: 24,
+    borderWidth: 1,
+    flexDirection: "row",
+    overflow: "hidden",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
     elevation: 4,
+    marginBottom: 28, // 28px section spacing
   },
-  nextTop: {
+  nextCardAccentBar: {
+    width: 5,
+  },
+  nextCardBody: {
+    flex: 1,
+    padding: 20,
+  },
+  nextCardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-  },
-  nextKicker: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "rgba(255,255,255,0.7)",
-    textTransform: "uppercase",
+    marginBottom: 10,
   },
   nextBadge: {
-    backgroundColor: "rgba(255,255,255,0.16)",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 12,
   },
   nextBadgeText: {
-    color: "#dcecff",
-    fontSize: 10,
+    fontSize: 11,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  timeBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  timeBadgeText: {
+    fontSize: 11,
     fontWeight: "700",
   },
+  nextCardContentRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 4,
+  },
   nextTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#ffffff",
-    marginTop: 8,
-    marginBottom: 6,
+    fontSize: 19,
+    fontWeight: "800",
+    letterSpacing: -0.4,
+    marginBottom: 8,
+  },
+  nextMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 8,
   },
   nextInfoRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    marginTop: 4,
+    gap: 5,
+  },
+  metaDivider: {
+    fontSize: 13,
   },
   nextInfoText: {
-    color: "rgba(255,255,255,0.85)",
     fontSize: 12,
+    fontWeight: "600",
   },
-  nextCardButton: {
-    flexDirection: "row",
-    alignItems: "center",
+  nextCircleBtn: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
-    paddingVertical: 8,
-    borderRadius: 9,
-    marginTop: 14,
-    gap: 6,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.16,
+    shadowRadius: 6,
+    elevation: 4,
+    marginLeft: 6,
   },
-  nextCardButtonText: {
-    color: "#ffffff",
-    fontSize: 13,
-    fontWeight: "700",
-  },
+
+  /* Section Headings */
   sectionHeading: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-end",
-    marginTop: 20,
-    marginBottom: 10,
+    alignItems: "center",
+    marginBottom: 14,
+    marginTop: 6,
   },
   sectionKicker: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "700",
     textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 2,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 19,
+    fontWeight: "800",
+    letterSpacing: -0.4,
+  },
+  viewAllRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+  },
+  viewAllText: {
+    fontSize: 13,
     fontWeight: "700",
-    marginTop: 2,
   },
-  countLabel: {
-    fontSize: 11,
-  },
+
+  /* Timeline List Card */
   timelineList: {
-    borderRadius: 13,
+    borderRadius: 22,
     borderWidth: 1,
     overflow: "hidden",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+    marginBottom: 28, // 28px section spacing
   },
   classRow: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 12,
-    borderBottomWidth: 1,
-    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    gap: 12,
   },
   classTimeCol: {
-    width: 44,
+    width: 50,
   },
   classTimeMain: {
-    fontSize: 12,
-    fontWeight: "700",
+    fontSize: 13,
+    fontWeight: "800",
   },
   classTimeSub: {
-    fontSize: 10,
+    fontSize: 11,
     marginTop: 2,
   },
   timelineMark: {
@@ -3360,20 +4559,20 @@ const styles = StyleSheet.create({
   },
   timelineLine: {
     position: "absolute",
-    width: 1,
-    top: -15,
-    bottom: -15,
+    width: 1.5,
+    top: -24,
+    bottom: -24,
   },
   timelineDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     borderWidth: 2,
     zIndex: 2,
   },
   classContentCol: {
     flex: 1,
-    gap: 3,
+    gap: 4,
   },
   classHeadingRow: {
     flexDirection: "row",
@@ -3381,7 +4580,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   classSubject: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "700",
   },
   unreadDot: {
@@ -3391,419 +4590,598 @@ const styles = StyleSheet.create({
   },
   classMeta: {
     fontSize: 11,
+    fontWeight: "500",
   },
+
+  /* Attendance Summary Card */
+  attendanceSummaryCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 22,
+    borderRadius: 24,
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.14,
+    shadowRadius: 12,
+    elevation: 4,
+    marginBottom: 28, // 28px section spacing
+  },
+  attendanceSummaryLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  attendanceIconWrap: {
+    width: 50,
+    height: 50,
+    borderRadius: 16,
+    backgroundColor: "rgba(255, 255, 255, 0.12)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  attendanceSummaryLabel: {
+    color: "rgba(255, 255, 255, 0.8)",
+    fontSize: 12,
+    fontWeight: "600",
+    letterSpacing: 0.3,
+  },
+  attendanceSummaryBig: {
+    color: "#FFFFFF",
+    fontSize: 26,
+    fontWeight: "900",
+    letterSpacing: -0.6,
+    marginTop: 2,
+  },
+  attendanceSummarySub: {
+    color: "rgba(255, 255, 255, 0.7)",
+    fontSize: 11,
+    marginTop: 2,
+  },
+  attendanceSummaryRight: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  progressRingSim: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    borderWidth: 3.5,
+    borderColor: "rgba(255, 255, 255, 0.18)",
+    justifyContent: "center",
+    alignItems: "center",
+    position: "relative",
+  },
+  progressRingSegment: {
+    position: "absolute",
+    top: -3.5,
+    left: -3.5,
+    right: -3.5,
+    bottom: -3.5,
+    borderRadius: 23,
+    borderWidth: 3.5,
+    borderTopColor: "transparent",
+    borderLeftColor: "transparent",
+  },
+
+  /* Quick Actions Grid */
+  quickActionsGrid: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 10,
+  },
+  quickActionCard: {
+    flex: 1,
+    borderRadius: 20,
+    borderWidth: 1,
+    paddingVertical: 16,
+    paddingHorizontal: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  quickActionIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  quickActionLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+
+  /* Teacher request strip */
   requestStrip: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 12,
-    borderRadius: 12,
+    padding: 16,
+    borderRadius: 20,
     borderWidth: 1,
-    marginTop: 12,
-    gap: 10,
+    marginTop: 18,
+    gap: 14,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   requestIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 9,
+    width: 42,
+    height: 42,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
   },
   requestStripTitle: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "700",
   },
   requestStripSub: {
-    fontSize: 10,
+    fontSize: 11,
     marginTop: 2,
   },
+
+  /* Day picker (Timetable) */
   dayPicker: {
     flexDirection: "row",
     justifyContent: "space-between",
-    padding: 6,
-    borderRadius: 12,
+    padding: 8,
+    borderRadius: 20,
     borderWidth: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   dayPickerItem: {
     flex: 1,
     alignItems: "center",
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
   },
   dayPickerItemSelected: {
-    // handled dynamically
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   dayPickerDay: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: "700",
     textTransform: "uppercase",
   },
   dayPickerDate: {
-    fontSize: 14,
-    fontWeight: "700",
-    marginTop: 2,
+    fontSize: 15,
+    fontWeight: "800",
+    marginTop: 3,
   },
   weekControls: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginVertical: 14,
+    marginVertical: 18,
   },
   weekNavBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 11,
     borderWidth: 1,
     justifyContent: "center",
     alignItems: "center",
   },
   weekControlsText: {
-    fontSize: 14,
-    fontWeight: "700",
+    fontSize: 15,
+    fontWeight: "800",
   },
+
+  /* Attendance student view */
   summaryGrid: {
     flexDirection: "row",
-    borderRadius: 12,
+    borderRadius: 20,
     borderWidth: 1,
     overflow: "hidden",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   summaryCell: {
     flex: 1,
     alignItems: "center",
-    paddingVertical: 14,
+    paddingVertical: 18,
     borderRightWidth: 1,
   },
   summaryNum: {
-    fontSize: 20,
-    fontWeight: "800",
+    fontSize: 24,
+    fontWeight: "900",
   },
   summaryLabel: {
-    fontSize: 10,
-    marginTop: 2,
+    fontSize: 11,
+    fontWeight: "600",
+    marginTop: 3,
   },
   filterRow: {
     flexDirection: "row",
-    gap: 8,
-    marginVertical: 12,
+    gap: 10,
+    marginVertical: 18,
   },
   filterChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
     borderWidth: 1,
   },
   filterChipText: {
-    fontSize: 11,
+    fontSize: 12,
   },
   recordList: {
-    borderRadius: 12,
+    borderRadius: 20,
     borderWidth: 1,
     overflow: "hidden",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   recordRow: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 12,
-    gap: 10,
+    padding: 16,
+    gap: 12,
   },
   statusMarkCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
   },
   recordSubject: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "700",
   },
   recordMeta: {
-    fontSize: 10,
+    fontSize: 11,
     marginTop: 2,
   },
   actionCard: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 12,
-    borderRadius: 12,
+    padding: 18,
+    borderRadius: 20,
     borderWidth: 1,
-    marginTop: 14,
-    gap: 10,
+    marginTop: 18,
+    gap: 14,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   actionIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 13,
     justifyContent: "center",
     alignItems: "center",
   },
   actionCardTitle: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "700",
   },
   actionCardSub: {
-    fontSize: 10,
+    fontSize: 11,
     marginTop: 2,
   },
+
+  /* Attendance teacher roster */
   networkWarning: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 12,
+    padding: 14,
+    borderRadius: 14,
+    marginBottom: 16,
   },
   networkWarningTitle: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "700",
   },
   networkWarningDesc: {
-    fontSize: 10,
+    fontSize: 11,
     marginTop: 2,
   },
   rosterSummaryRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 12,
   },
   rosterSummaryCount: {
-    fontSize: 11,
+    fontSize: 12,
   },
   legendRow: {
     flexDirection: "row",
     alignItems: "center",
   },
   legendDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 7,
+    height: 7,
+    borderRadius: 4,
     marginRight: 4,
   },
   legendText: {
-    fontSize: 10,
+    fontSize: 11,
+    fontWeight: "600",
   },
   rosterList: {
-    borderRadius: 12,
+    borderRadius: 20,
     borderWidth: 1,
     overflow: "hidden",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   studentRow: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 10,
-    gap: 10,
+    padding: 14,
+    gap: 12,
   },
   avatarCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     justifyContent: "center",
     alignItems: "center",
   },
   avatarText: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: "800",
   },
   studentName: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "700",
   },
   studentId: {
-    fontSize: 10,
+    fontSize: 11,
     marginTop: 1,
   },
   attendanceToggleRow: {
     flexDirection: "row",
-    gap: 6,
+    gap: 8,
   },
   toggleBtn: {
-    width: 34,
-    height: 32,
-    borderRadius: 8,
+    width: 38,
+    height: 36,
+    borderRadius: 10,
     borderWidth: 1,
     justifyContent: "center",
     alignItems: "center",
   },
   toggleBtnText: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: "800",
   },
   stickySubmit: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 14,
-    borderRadius: 12,
+    padding: 18,
+    borderRadius: 20,
     borderWidth: 1,
-    marginTop: 14,
+    marginTop: 18,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   stickySubmitCount: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "600",
   },
+
+  /* Course Hero */
   courseHero: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 14,
-    borderRadius: 13,
+    padding: 18,
+    borderRadius: 22,
     borderWidth: 1,
-    gap: 12,
+    gap: 16,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   courseCodeBadge: {
-    width: 50,
-    height: 50,
-    borderRadius: 12,
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    borderWidth: 1,
     justifyContent: "center",
     alignItems: "center",
   },
   courseCodeText: {
-    fontSize: 16,
-    fontWeight: "800",
+    fontSize: 17,
+    fontWeight: "900",
   },
   courseHeroTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    marginVertical: 2,
+    fontSize: 19,
+    fontWeight: "800",
+    letterSpacing: -0.3,
   },
   courseHeroSub: {
-    fontSize: 11,
+    fontSize: 12,
+    marginTop: 2,
   },
   detailGrid: {
     flexDirection: "row",
-    gap: 8,
-    marginTop: 10,
+    gap: 12,
+    marginVertical: 14,
   },
   detailGridCell: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    padding: 12,
-    borderRadius: 11,
+    padding: 15,
+    borderRadius: 16,
     borderWidth: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   detailCellLabel: {
-    fontSize: 9,
+    fontSize: 11,
+    fontWeight: "600",
   },
   detailCellValue: {
-    fontSize: 12,
-    fontWeight: "700",
+    fontSize: 13,
+    fontWeight: "800",
     marginTop: 2,
   },
   statusPanel: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 12,
-    borderRadius: 11,
+    padding: 16,
+    borderRadius: 16,
     borderWidth: 1,
-    marginTop: 10,
+    marginBottom: 18,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   statusPanelLabel: {
-    fontSize: 9,
+    fontSize: 11,
+    fontWeight: "600",
   },
   statusPanelValue: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "700",
     marginTop: 2,
   },
   classActions: {
-    gap: 10,
-    marginTop: 18,
+    gap: 12,
   },
   inlineWarning: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 10,
-    borderRadius: 9,
-    gap: 8,
+    padding: 12,
+    borderRadius: 12,
+    gap: 10,
   },
   inlineWarningText: {
-    fontSize: 11,
+    fontSize: 12,
+    fontWeight: "500",
     flex: 1,
   },
   announcementCard: {
-    padding: 14,
-    borderRadius: 12,
+    padding: 18,
+    borderRadius: 20,
     borderWidth: 1,
-    marginTop: 16,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   announcementHeader: {
     flexDirection: "row",
     alignItems: "center",
   },
   announcementIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 11,
     justifyContent: "center",
     alignItems: "center",
   },
   announcementTitle: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "700",
   },
   announcementTime: {
-    fontSize: 9,
-    marginTop: 1,
+    fontSize: 11,
   },
   announcementBody: {
-    fontSize: 12,
-    lineHeight: 18,
-    marginVertical: 10,
+    fontSize: 13,
+    lineHeight: 19,
+    marginVertical: 12,
   },
   announcementAction: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "700",
   },
+
+  /* Notifications */
   notificationList: {
-    borderRadius: 12,
+    borderRadius: 20,
     borderWidth: 1,
     overflow: "hidden",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   notificationRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    padding: 12,
-    gap: 10,
+    alignItems: "center",
+    padding: 16,
+    gap: 14,
   },
   noticeIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
   },
   notificationTitleText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "700",
   },
   notificationSubText: {
-    fontSize: 11,
-    marginTop: 2,
-    lineHeight: 16,
+    fontSize: 12,
+    marginTop: 3,
   },
   notificationTimeText: {
-    fontSize: 9,
-    marginTop: 4,
+    fontSize: 11,
+    marginTop: 3,
   },
+
+  /* Scanner screen */
   scannerScreen: {
     flex: 1,
-    backgroundColor: "#090e14",
+  },
+  scannerHeaderWrap: {
+    backgroundColor: "rgba(8, 26, 51, 0.70)",
   },
   scannerHeader: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 22,
+    paddingVertical: 14,
   },
   scannerEyebrow: {
-    fontSize: 10,
-    color: "#a7b1bf",
-    fontWeight: "600",
+    color: "#E9B544",
+    fontSize: 11,
+    fontWeight: "700",
+    textTransform: "uppercase",
   },
   scannerHeaderTitle: {
-    fontSize: 18,
-    fontWeight: "700",
     color: "#ffffff",
+    fontSize: 18,
+    fontWeight: "800",
   },
   cameraView: {
     flex: 1,
@@ -3812,240 +5190,243 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   scanGuides: {
-    position: "absolute",
-    width: 260,
-    height: 340,
-    zIndex: 2,
+    width: 250,
+    height: 330,
+    position: "relative",
   },
   cornerGuide: {
     position: "absolute",
     width: 28,
     height: 28,
-    borderColor: "#edf5fb",
+    borderColor: "#E9B544",
   },
   guideTL: {
     top: 0,
     left: 0,
-    borderTopWidth: 2,
-    borderLeftWidth: 2,
+    borderTopWidth: 3,
+    borderLeftWidth: 3,
   },
   guideTR: {
     top: 0,
     right: 0,
-    borderTopWidth: 2,
-    borderRightWidth: 2,
+    borderTopWidth: 3,
+    borderRightWidth: 3,
   },
   guideBL: {
     bottom: 0,
     left: 0,
-    borderBottomWidth: 2,
-    borderLeftWidth: 2,
+    borderBottomWidth: 3,
+    borderLeftWidth: 3,
   },
   guideBR: {
     bottom: 0,
     right: 0,
-    borderBottomWidth: 2,
-    borderRightWidth: 2,
+    borderBottomWidth: 3,
+    borderRightWidth: 3,
   },
   documentSample: {
-    width: 220,
-    height: 300,
-    backgroundColor: "#f6f3ed",
-    borderRadius: 4,
-    padding: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 6,
-    transform: [{ rotate: "-1deg" }],
-    position: "relative",
+    position: "absolute",
+    width: 200,
+    height: 270,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderRadius: 6,
+    padding: 16,
   },
   docHead: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: "#67717b",
-    alignSelf: "center",
-    marginBottom: 20,
+    width: 60,
+    height: 8,
+    backgroundColor: "rgba(255,255,255,0.3)",
+    marginBottom: 12,
+    borderRadius: 3,
   },
   docLine: {
-    height: 4,
-    backgroundColor: "#c7c8c5",
-    marginVertical: 6,
     width: "70%",
+    height: 5,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    marginBottom: 8,
     borderRadius: 2,
   },
   docLineWide: {
-    width: "100%",
+    width: "90%",
   },
   docStamp: {
     position: "absolute",
     bottom: 24,
     right: 20,
-    borderWidth: 2,
-    borderColor: "#7b96ae",
-    padding: 6,
-    transform: [{ rotate: "-8deg" }],
+    borderWidth: 1.5,
+    borderColor: "#E9B544",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
   docStampText: {
-    color: "#7b96ae",
-    fontSize: 9,
+    color: "#E9B544",
+    fontSize: 8,
     fontWeight: "800",
   },
   cameraInstruction: {
-    position: "absolute",
-    bottom: 20,
-    color: "#ced5dd",
-    fontSize: 11,
+    color: "rgba(255,255,255,0.8)",
+    fontSize: 12,
+    marginTop: 22,
   },
   cameraControls: {
-    height: 100,
-    backgroundColor: "#111923",
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-around",
-    paddingHorizontal: 30,
+    justifyContent: "space-between",
+    paddingHorizontal: 28,
+    paddingVertical: 24,
   },
   galleryButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 10,
-    backgroundColor: "#1d2834",
-    borderWidth: 1,
-    borderColor: "#435060",
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(255,255,255,0.12)",
     justifyContent: "center",
     alignItems: "center",
   },
   captureButton: {
-    width: 66,
-    height: 66,
-    borderRadius: 33,
-    borderWidth: 3,
-    borderColor: "#ffffff",
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 4,
+    borderColor: "#E9B544",
     justifyContent: "center",
     alignItems: "center",
   },
   captureInnerCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: "#ffffff",
   },
   pageCountBadge: {
-    color: "#aeb9c5",
-    fontSize: 11,
-    fontWeight: "600",
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: "700",
   },
+
+  /* Document preview */
   previewDocumentSheet: {
-    backgroundColor: "#fffefa",
-    padding: 30,
-    borderRadius: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    backgroundColor: "#ffffff",
+    borderRadius: 18,
+    padding: 24,
     borderWidth: 1,
-    borderColor: "#dfe5eb",
+    borderColor: "#E4EAF1",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 4,
+    marginBottom: 18,
   },
   paperLogo: {
-    alignSelf: "center",
+    alignSelf: "flex-end",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderWidth: 1,
-    borderColor: "#66717e",
-    padding: 4,
+    borderColor: "#102B55",
+    borderRadius: 5,
   },
   paperLogoText: {
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: "700",
-    color: "#303840",
+    color: "#102B55",
   },
   paperDocTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#17263D",
     textAlign: "center",
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#303840",
-    marginVertical: 24,
+    marginVertical: 16,
+    letterSpacing: 0.5,
   },
   paperTextLines: {
     gap: 8,
+    marginVertical: 14,
   },
   paperLine: {
-    height: 3,
-    backgroundColor: "#d8d8d2",
-    borderRadius: 1.5,
+    height: 6,
+    backgroundColor: "#E4EAF1",
+    borderRadius: 3,
+    width: "100%",
   },
   paperSignature: {
-    textAlign: "right",
+    fontSize: 11,
+    color: "#748197",
     fontStyle: "italic",
-    fontSize: 10,
-    color: "#607083",
-    marginTop: 30,
+    textAlign: "right",
+    marginTop: 22,
   },
   editToolsRow: {
     flexDirection: "row",
-    gap: 8,
-    marginTop: 14,
+    gap: 10,
   },
   editToolBtn: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 10,
-    borderRadius: 9,
+    paddingVertical: 12,
+    borderRadius: 14,
     borderWidth: 1,
-    gap: 6,
+    gap: 8,
   },
   editToolBtnText: {
-    fontSize: 11,
-    fontWeight: "600",
+    fontSize: 12,
+    fontWeight: "700",
   },
   draftNotice: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 10,
-    borderRadius: 9,
-    marginTop: 12,
-    gap: 8,
+    padding: 14,
+    borderRadius: 12,
+    marginVertical: 14,
+    gap: 10,
   },
   draftNoticeText: {
-    fontSize: 10,
+    fontSize: 12,
     flex: 1,
   },
+
+  /* Result screen */
   resultScreen: {
+    padding: 26,
     alignItems: "center",
-    padding: 24,
-    paddingTop: 60,
   },
   resultIconWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     justifyContent: "center",
     alignItems: "center",
+    marginTop: 24,
     marginBottom: 16,
   },
   resultTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    marginTop: 6,
-    marginBottom: 6,
+    fontSize: 22,
+    fontWeight: "900",
+    letterSpacing: -0.5,
+    marginTop: 4,
+    textAlign: "center",
   },
   resultSubtitle: {
-    fontSize: 12,
+    fontSize: 13,
     textAlign: "center",
-    lineHeight: 18,
-    maxWidth: 280,
+    lineHeight: 20,
+    marginTop: 8,
+    marginBottom: 24,
+    maxWidth: 300,
   },
   receiptBox: {
     width: "100%",
-    borderRadius: 12,
+    borderRadius: 20,
     borderWidth: 1,
-    paddingHorizontal: 14,
-    marginTop: 20,
-    marginBottom: 10,
+    padding: 18,
+    marginBottom: 20,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   receiptRow: {
     flexDirection: "row",
@@ -4055,359 +5436,389 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   receiptLabel: {
-    fontSize: 11,
+    fontSize: 13,
   },
   receiptValue: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: "700",
   },
+
+  /* Announcement composer */
   recipientCard: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 10,
-    borderRadius: 10,
+    padding: 16,
+    borderRadius: 16,
     borderWidth: 1,
-    marginBottom: 8,
+    marginBottom: 16,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   avatarGroup: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     justifyContent: "center",
     alignItems: "center",
   },
   avatarGroupText: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: "800",
   },
   recipientLabel: {
-    fontSize: 9,
+    fontSize: 11,
+    fontWeight: "600",
   },
   recipientTitle: {
-    fontSize: 11,
+    fontSize: 14,
     fontWeight: "700",
-    marginTop: 1,
   },
   textArea: {
-    height: 90,
+    height: 104,
+    paddingTop: 12,
     textAlignVertical: "top",
   },
   fieldCharCount: {
-    alignSelf: "flex-end",
-    fontSize: 9,
-    marginTop: 2,
+    fontSize: 11,
+    textAlign: "right",
+    marginTop: 4,
   },
   messagePreview: {
-    padding: 12,
-    borderRadius: 10,
+    padding: 16,
+    borderRadius: 18,
     borderWidth: 1,
-    borderStyle: "dashed",
-    marginVertical: 10,
+    marginVertical: 16,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   messagePreviewLabel: {
-    fontSize: 9,
-    textTransform: "uppercase",
+    fontSize: 11,
     fontWeight: "700",
-    marginBottom: 4,
+    textTransform: "uppercase",
   },
   messagePreviewTitle: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: "700",
+    marginTop: 5,
   },
   messagePreviewText: {
-    fontSize: 11,
-    lineHeight: 16,
-    marginTop: 4,
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 5,
   },
   inlineSuccessBox: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
-    borderRadius: 12,
-    marginVertical: 40,
+    padding: 18,
+    borderRadius: 16,
+    borderWidth: 1,
   },
   inlineSuccessTitle: {
-    fontSize: 14,
-    fontWeight: "700",
+    fontSize: 15,
+    fontWeight: "800",
   },
   inlineSuccessDesc: {
-    fontSize: 11,
+    fontSize: 13,
     marginTop: 2,
   },
+
+  /* Requests */
   requestHistoryRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 12,
-    borderRadius: 10,
+    padding: 16,
+    borderRadius: 18,
     borderWidth: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   requestHistoryTitle: {
-    fontSize: 11,
+    fontSize: 14,
     fontWeight: "700",
   },
   requestHistorySub: {
-    fontSize: 9,
+    fontSize: 11,
     marginTop: 2,
   },
+
+  /* Profile */
   identityCard: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 14,
-    borderRadius: 12,
+    padding: 22,
+    borderRadius: 24,
     borderWidth: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+    marginBottom: 24,
   },
   avatarLarge: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 2,
     justifyContent: "center",
     alignItems: "center",
   },
   avatarLargeText: {
-    fontSize: 15,
-    fontWeight: "800",
+    fontSize: 20,
+    fontWeight: "900",
   },
   identityName: {
-    fontSize: 15,
-    fontWeight: "700",
+    fontSize: 18,
+    fontWeight: "800",
+    letterSpacing: -0.3,
   },
   identityDept: {
-    fontSize: 11,
-    marginTop: 2,
+    fontSize: 12,
+    marginTop: 3,
   },
   identityEmail: {
-    fontSize: 10,
-    marginTop: 1,
+    fontSize: 12,
+    fontWeight: "700",
+    marginTop: 3,
   },
   settingsSection: {
-    marginTop: 18,
+    marginBottom: 24,
   },
   settingsSectionTitle: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "700",
     textTransform: "uppercase",
-    marginBottom: 8,
     letterSpacing: 0.5,
+    marginBottom: 10,
+    marginLeft: 4,
   },
   themeOptionsGrid: {
     flexDirection: "row",
-    gap: 8,
+    gap: 12,
   },
   themeOptionBtn: {
     flex: 1,
-    padding: 8,
-    borderRadius: 10,
+    padding: 12,
+    borderRadius: 16,
     alignItems: "center",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   themePreviewBox: {
     width: "100%",
-    height: 40,
-    borderRadius: 6,
+    height: 42,
+    borderRadius: 10,
     padding: 6,
     justifyContent: "space-between",
+    marginBottom: 10,
   },
   themePreviewBar: {
-    width: "60%",
-    height: 4,
-    borderRadius: 2,
-  },
-  themePreviewBlock: {
-    width: "85%",
-    height: 14,
+    height: 6,
+    width: "55%",
     borderRadius: 3,
   },
+  themePreviewBlock: {
+    height: 16,
+    borderRadius: 5,
+  },
   themeOptionLabel: {
-    fontSize: 10,
-    fontWeight: "700",
-    marginTop: 6,
+    fontSize: 12,
   },
   settingsBlock: {
-    borderRadius: 11,
+    borderRadius: 20,
     borderWidth: 1,
     overflow: "hidden",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   settingsRow: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 12,
+    padding: 16,
     borderBottomWidth: 1,
   },
   settingsRowTitle: {
-    fontSize: 11,
+    fontSize: 14,
     fontWeight: "700",
   },
   settingsRowSub: {
-    fontSize: 9,
+    fontSize: 11,
     marginTop: 2,
   },
   settingsRowValue: {
-    fontSize: 10,
+    fontSize: 12,
+    fontWeight: "700",
     marginRight: 6,
   },
   switchTrack: {
-    width: 34,
-    height: 20,
-    borderRadius: 10,
-    padding: 2,
+    width: 46,
+    height: 26,
+    borderRadius: 13,
+    padding: 2.5,
     justifyContent: "center",
   },
   switchThumb: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    width: 21,
+    height: 21,
+    borderRadius: 10.5,
     backgroundColor: "#ffffff",
   },
   switchThumbActive: {
-    transform: [{ translateX: 14 }],
+    alignSelf: "flex-end",
   },
   dangerButton: {
+    minHeight: 52,
+    borderRadius: 16,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 12,
-    borderRadius: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+  },
+  dangerButtonIconWrap: {
+    width: 22,
+    height: 22,
+    alignItems: "center",
+    justifyContent: "center",
   },
   dangerButtonText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "700",
+    lineHeight: 20,
+    includeFontPadding: false,
+    textAlignVertical: "center",
   },
   appVersion: {
+    fontSize: 11,
     textAlign: "center",
-    fontSize: 9,
-    marginTop: 16,
+    marginTop: 22,
+    marginBottom: 10,
   },
-  bottomNav: {
+
+  /* Bottom Navigation */
+  bottomNavContainer: {
     flexDirection: "row",
     borderTopWidth: 1,
     paddingTop: 8,
     position: "relative",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  bottomNavCompactIndicator: {
+    position: "absolute",
+    top: 8,
+    zIndex: 1,
   },
   bottomNavItem: {
-    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 3,
+    paddingVertical: 2,
     position: "relative",
+    zIndex: 2,
   },
-  bottomNavIndicator: {
-    position: "absolute",
-    top: -8,
-    width: 28,
-    height: 2,
-    borderRadius: 1,
+  bottomNavIconWrap: {
+    width: 58,
+    height: 28,
+    justifyContent: "center",
+    alignItems: "center",
   },
   bottomNavLabel: {
-    fontSize: 10,
+    fontSize: 10.5,
+    marginTop: 2,
   },
+  bottomNavIndicatorBar: {
+    width: 20,
+    height: 2.5,
+    borderRadius: 1.5,
+    marginTop: 3,
+  },
+
+  /* Login screen styles */
   loginScreenScroll: {
     flex: 1,
   },
   loginScreenContent: {
+    padding: 22,
+    paddingBottom: 40,
     flexGrow: 1,
     justifyContent: "space-between",
-    paddingHorizontal: 22,
-    paddingTop: 14,
-    paddingBottom: 22,
   },
   loginTopBar: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 24,
   },
   institutionTag: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 14,
+    borderWidth: 1,
   },
   institutionTagText: {
     fontSize: 11,
     fontWeight: "700",
-    letterSpacing: 0.3,
   },
   loginTopActions: {
     flexDirection: "row",
-    justifyContent: "flex-end",
     gap: 8,
   },
   compactControl: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 14,
-    borderWidth: 1,
     gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
   },
   compactControlText: {
     fontSize: 11,
-    fontWeight: "600",
+    fontWeight: "700",
   },
-  loginMainSection: {
-    width: "100%",
-    maxWidth: 420,
-    alignSelf: "center",
-    marginVertical: 10,
+  loginCard: {
+    borderRadius: 28,
+    borderWidth: 1,
+    padding: 24,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 4,
   },
   brandBlock: {
     alignItems: "center",
     marginBottom: 20,
   },
-  logoContainer: {
-    width: 230,
-    height: 84,
-    borderRadius: 14,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#ffffff",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 5,
-    elevation: 2,
-  },
-  brandLogo: {
-    width: "100%",
-    height: "100%",
-  },
-  logoPlaceholder: {
-    width: "100%",
-    height: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  logoPlaceholderText: {
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  institution: {
-    fontSize: 11,
-    fontWeight: "800",
-    textTransform: "uppercase",
-    letterSpacing: 1.2,
-    marginTop: 14,
-  },
   brandTitle: {
-    fontSize: 23,
-    fontWeight: "800",
+    fontSize: 24,
+    fontWeight: "900",
     letterSpacing: -0.5,
-    marginTop: 3,
+    marginTop: 10,
   },
   brandSubtitle: {
     fontSize: 12,
-    marginTop: 3,
+    marginTop: 4,
     textAlign: "center",
   },
   roleSwitch: {
     flexDirection: "row",
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     padding: 3,
     marginBottom: 20,
@@ -4416,23 +5827,23 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     gap: 6,
-    paddingVertical: 9,
-    borderRadius: 9,
+    paddingVertical: 10,
+    borderRadius: 13,
     alignItems: "center",
     justifyContent: "center",
   },
   roleSwitchButtonActive: {
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1.5 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
-    shadowRadius: 3,
+    shadowRadius: 4,
     elevation: 2,
   },
   roleSwitchText: {
     fontSize: 13,
   },
   formStack: {
-    gap: 15,
+    gap: 16,
   },
   field: {
     gap: 6,
@@ -4448,13 +5859,26 @@ const styles = StyleSheet.create({
   },
   inputWrapper: {
     position: "relative",
+    justifyContent: "center",
   },
   input: {
-    height: 48,
-    borderRadius: 11,
+    height: 52,
+    borderRadius: 14,
     borderWidth: 1.2,
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     fontSize: 14,
+  },
+  inputPrefixIcon: {
+    position: "absolute",
+    left: 14,
+    top: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 2,
+  },
+  inputWithPrefix: {
+    paddingLeft: 42,
   },
   passwordWrap: {
     position: "relative",
@@ -4465,7 +5889,7 @@ const styles = StyleSheet.create({
   },
   passwordToggle: {
     position: "absolute",
-    right: 12,
+    right: 14,
     height: "100%",
     justifyContent: "center",
     alignItems: "center",
@@ -4480,55 +5904,67 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   primaryButton: {
-    minHeight: 48,
-    borderRadius: 12,
+    minHeight: 50,
+    borderRadius: 16,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 5,
+    elevation: 3,
   },
   primaryButtonText: {
     color: "#ffffff",
-    fontSize: 14,
-    fontWeight: "700",
+    fontSize: 15,
+    fontWeight: "800",
     letterSpacing: 0.2,
   },
   buttonLoadingRow: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 8,
   },
+  buttonContentRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  buttonIconWrap: {
+    width: 22,
+    height: 22,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   secondaryButton: {
-    minHeight: 44,
-    borderRadius: 11,
+    minHeight: 48,
+    borderRadius: 14,
     borderWidth: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
   },
   secondaryButtonText: {
     fontSize: 13,
     fontWeight: "700",
   },
   ghostButton: {
-    minHeight: 38,
+    minHeight: 40,
     justifyContent: "center",
     alignItems: "center",
   },
   ghostButtonText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "700",
   },
   loginFooter: {
     alignItems: "center",
-    paddingTop: 16,
-    gap: 6,
+    paddingTop: 20,
+    gap: 8,
   },
   securityRow: {
     flexDirection: "row",
@@ -4540,12 +5976,14 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   universityAffiliation: {
-    fontSize: 10,
+    fontSize: 11,
     textAlign: "center",
-    lineHeight: 14,
+    lineHeight: 15,
     maxWidth: 320,
     opacity: 0.75,
   },
+
+  /* Dialog Modal */
   modalOverlay: {
     flex: 1,
     justifyContent: "center",
@@ -4563,46 +6001,46 @@ const styles = StyleSheet.create({
   modalCard: {
     width: "100%",
     maxWidth: 340,
-    borderRadius: 18,
+    borderRadius: 24,
     borderWidth: 1,
-    padding: 22,
+    padding: 24,
     alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.18,
     shadowRadius: 16,
     elevation: 8,
   },
   modalIconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 14,
   },
   modalTitle: {
-    fontSize: 17,
-    fontWeight: "700",
+    fontSize: 18,
+    fontWeight: "800",
     textAlign: "center",
     marginBottom: 8,
     letterSpacing: -0.2,
   },
   modalMessage: {
     fontSize: 13,
-    lineHeight: 19,
+    lineHeight: 20,
     textAlign: "center",
-    marginBottom: 20,
+    marginBottom: 22,
   },
   modalActions: {
     flexDirection: "row",
-    gap: 10,
+    gap: 12,
     width: "100%",
   },
   modalCancelBtn: {
     flex: 1,
-    height: 44,
-    borderRadius: 11,
+    height: 46,
+    borderRadius: 14,
     borderWidth: 1,
     justifyContent: "center",
     alignItems: "center",
@@ -4613,8 +6051,8 @@ const styles = StyleSheet.create({
   },
   modalConfirmBtn: {
     flex: 1,
-    height: 44,
-    borderRadius: 11,
+    height: 46,
+    borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
   },
