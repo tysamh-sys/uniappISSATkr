@@ -280,82 +280,91 @@ function AppIcon({
   name,
   size = 20,
   color,
+  style,
 }: {
   name: string;
   size?: number;
   color?: string;
+  style?: StyleProp<ViewStyle>;
 }) {
   const iconColor = color || "#17263D";
 
-  switch (name) {
-    case "home":
-      return <Feather name="home" size={size} color={iconColor} />;
-    case "calendar":
-      return <Feather name="calendar" size={size} color={iconColor} />;
-    case "check":
-      return <Feather name="check" size={size} color={iconColor} />;
-    case "user":
-      return <Feather name="user" size={size} color={iconColor} />;
-    case "bell":
-      return <Feather name="bell" size={size} color={iconColor} />;
-    case "cloud":
-      return <Feather name="cloud" size={size} color={iconColor} />;
-    case "wifiOff":
-      return <Feather name="wifi-off" size={size} color={iconColor} />;
-    case "chevron":
-      return <Feather name="chevron-right" size={size} color={iconColor} />;
-    case "back":
-      return <Feather name="chevron-left" size={size} color={iconColor} />;
-    case "map":
-      return <Feather name="map-pin" size={size} color={iconColor} />;
-    case "clock":
-      return <Feather name="clock" size={size} color={iconColor} />;
-    case "megaphone":
-      return <Ionicons name="megaphone-outline" size={size} color={iconColor} />;
-    case "camera":
-      return <Feather name="camera" size={size} color={iconColor} />;
-    case "file":
-      return <Feather name="file-text" size={size} color={iconColor} />;
-    case "settings":
-      return <Feather name="settings" size={size} color={iconColor} />;
-    case "logout":
-      return <Feather name="log-out" size={size} color={iconColor} />;
-    case "language":
-      return <Feather name="globe" size={size} color={iconColor} />;
-    case "moon":
-      return <Feather name="moon" size={size} color={iconColor} />;
-    case "sun":
-      return <Feather name="sun" size={size} color={iconColor} />;
-    case "lock":
-      return <Feather name="lock" size={size} color={iconColor} />;
-    case "eye":
-      return <Feather name="eye" size={size} color={iconColor} />;
-    case "eyeOff":
-      return <Feather name="eye-off" size={size} color={iconColor} />;
-    case "shield":
-      return <Feather name="shield" size={size} color={iconColor} />;
-    case "award":
-      return <Feather name="award" size={size} color={iconColor} />;
-    case "info":
-      return <Feather name="info" size={size} color={iconColor} />;
-    case "checkCircle":
-      return <Feather name="check-circle" size={size} color={iconColor} />;
-    case "users":
-      return <Feather name="users" size={size} color={iconColor} />;
-    case "barChart":
-      return <Feather name="bar-chart-2" size={size} color={iconColor} />;
-    case "mail":
-      return <Feather name="mail" size={size} color={iconColor} />;
-    case "arrowRight":
-      return <Feather name="arrow-right" size={size} color={iconColor} />;
-    case "arrowLeft":
-      return <Feather name="arrow-left" size={size} color={iconColor} />;
-    case "login":
-      return <Feather name="log-in" size={size} color={iconColor} />;
-    case "more":
-    default:
-      return <Feather name="more-horizontal" size={size} color={iconColor} />;
+  const renderIcon = () => {
+    switch (name) {
+      case "home":
+        return <Feather name="home" size={size} color={iconColor} />;
+      case "calendar":
+        return <Feather name="calendar" size={size} color={iconColor} />;
+      case "check":
+        return <Feather name="check" size={size} color={iconColor} />;
+      case "user":
+        return <Feather name="user" size={size} color={iconColor} />;
+      case "bell":
+        return <Feather name="bell" size={size} color={iconColor} />;
+      case "cloud":
+        return <Feather name="cloud" size={size} color={iconColor} />;
+      case "wifiOff":
+        return <Feather name="wifi-off" size={size} color={iconColor} />;
+      case "chevron":
+        return <Feather name="chevron-right" size={size} color={iconColor} />;
+      case "back":
+        return <Feather name="chevron-left" size={size} color={iconColor} />;
+      case "map":
+        return <Feather name="map-pin" size={size} color={iconColor} />;
+      case "clock":
+        return <Feather name="clock" size={size} color={iconColor} />;
+      case "megaphone":
+        return <Ionicons name="megaphone-outline" size={size} color={iconColor} />;
+      case "camera":
+        return <Feather name="camera" size={size} color={iconColor} />;
+      case "file":
+        return <Feather name="file-text" size={size} color={iconColor} />;
+      case "settings":
+        return <Feather name="settings" size={size} color={iconColor} />;
+      case "logout":
+        return <Feather name="log-out" size={size} color={iconColor} />;
+      case "language":
+        return <Feather name="globe" size={size} color={iconColor} />;
+      case "moon":
+        return <Feather name="moon" size={size} color={iconColor} />;
+      case "sun":
+        return <Feather name="sun" size={size} color={iconColor} />;
+      case "lock":
+        return <Feather name="lock" size={size} color={iconColor} />;
+      case "eye":
+        return <Feather name="eye" size={size} color={iconColor} />;
+      case "eyeOff":
+        return <Feather name="eye-off" size={size} color={iconColor} />;
+      case "shield":
+        return <Feather name="shield" size={size} color={iconColor} />;
+      case "award":
+        return <Feather name="award" size={size} color={iconColor} />;
+      case "info":
+        return <Feather name="info" size={size} color={iconColor} />;
+      case "checkCircle":
+        return <Feather name="check-circle" size={size} color={iconColor} />;
+      case "users":
+        return <Feather name="users" size={size} color={iconColor} />;
+      case "barChart":
+        return <Feather name="bar-chart-2" size={size} color={iconColor} />;
+      case "mail":
+        return <Feather name="mail" size={size} color={iconColor} />;
+      case "arrowRight":
+        return <Feather name="arrow-right" size={size} color={iconColor} />;
+      case "arrowLeft":
+        return <Feather name="arrow-left" size={size} color={iconColor} />;
+      case "login":
+        return <Feather name="log-in" size={size} color={iconColor} />;
+      case "more":
+      default:
+        return <Feather name="more-horizontal" size={size} color={iconColor} />;
+    }
+  };
+
+  if (style) {
+    return <View style={style}>{renderIcon()}</View>;
   }
+  return renderIcon();
 }
 
 /** Status Badge */
@@ -764,6 +773,8 @@ function AppHeader({
   colors: ThemeColors;
   isDark: boolean;
 }) {
+  const isRTL = lang === "ar";
+
   return (
     <View
       style={[
@@ -776,22 +787,32 @@ function AppHeader({
         },
       ]}
     >
-      <View style={styles.headerLine}>
+      <View style={[styles.headerLine, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
         {onBack ? (
           <PressableScale
             style={[
               styles.backButtonWrap,
-              { backgroundColor: colors.surface, borderColor: colors.border },
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+                marginRight: isRTL ? 0 : 10,
+                marginLeft: isRTL ? 10 : 0,
+              },
             ]}
             onPress={onBack}
           >
-            <AppIcon name="back" size={20} color={colors.primary} />
+            <AppIcon
+              name="back"
+              size={18}
+              color={colors.primary}
+              style={{ transform: [{ rotate: isRTL ? "180deg" : "0deg" }] }}
+            />
           </PressableScale>
         ) : null}
 
-        <View style={styles.titleStack}>
+        <View style={[styles.titleStack, { alignItems: isRTL ? "flex-end" : "flex-start" }]}>
           {subtitle ? (
-            <View style={styles.subtitleLine}>
+            <View style={[styles.subtitleLine, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
               <AppIcon
                 name="calendar"
                 size={11}
@@ -809,13 +830,13 @@ function AppHeader({
           ) : null}
           <Text
             numberOfLines={1}
-            style={[styles.standardHeaderTitle, { color: colors.text }]}
+            style={[styles.standardHeaderTitle, { color: colors.text, textAlign: isRTL ? "right" : "left" }]}
           >
             {title}
           </Text>
         </View>
 
-        <View style={styles.headerActions}>
+        <View style={[styles.headerActions, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
           <PressableScale
             onPress={onToggleOnline}
             style={[
@@ -823,6 +844,7 @@ function AppHeader({
               {
                 backgroundColor: online ? colors.successSoft : colors.surfaceMuted,
                 borderColor: online ? "rgba(34, 160, 107, 0.25)" : colors.border,
+                flexDirection: isRTL ? "row-reverse" : "row",
               },
             ]}
           >
@@ -965,11 +987,13 @@ const ClassRow = React.memo(function ClassRow({
   onClick,
   colors,
   isLast = false,
+  isRTL = false,
 }: {
   item: ClassItem;
   onClick: () => void;
   colors: ThemeColors;
   isLast?: boolean;
+  isRTL?: boolean;
 }) {
   return (
     <PressableScale
@@ -980,12 +1004,13 @@ const ClassRow = React.memo(function ClassRow({
           backgroundColor: item.current ? colors.primarySoft : colors.surface,
           borderBottomColor: colors.border,
           borderBottomWidth: isLast ? 0 : 1,
+          flexDirection: isRTL ? "row-reverse" : "row",
         },
       ]}
     >
       <View style={styles.classTimeCol}>
-        <Text style={[styles.classTimeMain, { color: colors.text }]}>{item.time}</Text>
-        <Text style={[styles.classTimeSub, { color: colors.textSecondary }]}>{item.end}</Text>
+        <Text style={[styles.classTimeMain, { color: colors.text, textAlign: isRTL ? "right" : "left" }]}>{item.time}</Text>
+        <Text style={[styles.classTimeSub, { color: colors.textSecondary, textAlign: isRTL ? "right" : "left" }]}>{item.end}</Text>
       </View>
       <View style={styles.timelineMark}>
         <View style={[styles.timelineLine, { backgroundColor: colors.border }]} />
@@ -999,19 +1024,24 @@ const ClassRow = React.memo(function ClassRow({
           ]}
         />
       </View>
-      <View style={styles.classContentCol}>
-        <View style={styles.classHeadingRow}>
-          <Text numberOfLines={1} style={[styles.classSubject, { color: colors.text }]}>
+      <View style={[styles.classContentCol, { alignItems: isRTL ? "flex-end" : "flex-start" }]}>
+        <View style={[styles.classHeadingRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+          <Text numberOfLines={1} style={[styles.classSubject, { color: colors.text, textAlign: isRTL ? "right" : "left" }]}>
             {item.subject}
           </Text>
           {item.unread && <View style={[styles.unreadDot, { backgroundColor: colors.danger }]} />}
         </View>
-        <Text numberOfLines={1} style={[styles.classMeta, { color: colors.textSecondary }]}>
+        <Text numberOfLines={1} style={[styles.classMeta, { color: colors.textSecondary, textAlign: isRTL ? "right" : "left" }]}>
           {item.meta}
         </Text>
         <StatusBadge state={item.tone} label={item.status} colors={colors} />
       </View>
-      <AppIcon name="chevron" size={17} color={colors.textSecondary} />
+      <AppIcon
+        name="chevron"
+        size={17}
+        color={colors.textSecondary}
+        style={{ transform: [{ rotate: isRTL ? "180deg" : "0deg" }] }}
+      />
     </PressableScale>
   );
 });
@@ -1547,14 +1577,15 @@ function HomeScreen({
 }) {
   const classes = role === "student" ? studentClasses : teacherClasses;
   const greetingName = role === "student" ? "Amine" : "Mme. Mansouri";
+  const isRTL = lang === "ar";
 
   return (
     <View style={{ flex: 1, backgroundColor: "transparent" }}>
       {/* 1. Top Header Bar (Matching Reference Image) */}
-      <View style={styles.homeTopBar}>
+      <View style={[styles.homeTopBar, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
         <IssatLogo colors={colors} isDark={isDark} size="md" />
 
-        <View style={styles.homeTopActions}>
+        <View style={[styles.homeTopActions, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
           <PressableScale
             onPress={toggleOnline}
             style={[
@@ -1562,6 +1593,7 @@ function HomeScreen({
               {
                 backgroundColor: online ? colors.successSoft : colors.surfaceMuted,
                 borderColor: online ? "rgba(34, 160, 107, 0.25)" : colors.border,
+                flexDirection: isRTL ? "row-reverse" : "row",
               },
             ]}
           >
@@ -1591,7 +1623,7 @@ function HomeScreen({
             ]}
             onPress={() => navigate("notifications")}
           >
-            <AppIcon name="bell" size={19} color={colors.text} />
+            <AppIcon name="bell" size={18} color={colors.text} />
             <View
               style={[
                 styles.notificationRedDot,
@@ -1610,14 +1642,14 @@ function HomeScreen({
         showsVerticalScrollIndicator={false}
       >
         {/* 3. Spacious Greeting Section (Upper-Left alongside the prominent building) */}
-        <View style={styles.homeGreetingSection}>
-          <Text style={[styles.greetingSalutation, { color: colors.text }]}>
+        <View style={[styles.homeGreetingSection, isRTL && { alignSelf: "flex-end", alignItems: "flex-end" }]}>
+          <Text style={[styles.greetingSalutation, { color: colors.text, textAlign: isRTL ? "right" : "left" }]}>
             {lang === "fr" ? "Bonjour," : lang === "ar" ? "مرحباً،" : "Good morning,"}
           </Text>
-          <Text style={[styles.greetingName, { color: colors.text }]}>
+          <Text style={[styles.greetingName, { color: colors.text, textAlign: isRTL ? "right" : "left" }]}>
             {greetingName} 👋
           </Text>
-          <View style={styles.greetingDateRow}>
+          <View style={[styles.greetingDateRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
             <AppIcon
               name="calendar"
               size={13}
@@ -1644,6 +1676,7 @@ function HomeScreen({
               backgroundColor: colors.card,
               borderColor: isDark ? colors.border : "transparent",
               shadowColor: isDark ? "#000" : "#102B55",
+              flexDirection: isRTL ? "row-reverse" : "row",
             },
           ]}
         >
@@ -1651,7 +1684,7 @@ function HomeScreen({
           <View style={[styles.nextCardAccentBar, { backgroundColor: colors.accent }]} />
 
           <View style={styles.nextCardBody}>
-            <View style={styles.nextCardHeader}>
+            <View style={[styles.nextCardHeader, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
               <View style={[styles.nextBadge, { backgroundColor: colors.accentSoft }]}>
                 <Text style={[styles.nextBadgeText, { color: colors.accentText }]}>
                   {copy[lang].next}
@@ -1676,23 +1709,23 @@ function HomeScreen({
               </View>
             </View>
 
-            <View style={styles.nextCardContentRow}>
-              <View style={{ flex: 1, paddingRight: 10 }}>
+            <View style={[styles.nextCardContentRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+              <View style={{ flex: 1, paddingRight: isRTL ? 0 : 10, paddingLeft: isRTL ? 10 : 0 }}>
                 <Text
                   numberOfLines={1}
-                  style={[styles.nextTitle, { color: colors.text }]}
+                  style={[styles.nextTitle, { color: colors.text, textAlign: isRTL ? "right" : "left" }]}
                 >
                   {classes[1].subject}
                 </Text>
-                <View style={styles.nextMetaRow}>
-                  <View style={styles.nextInfoRow}>
+                <View style={[styles.nextMetaRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+                  <View style={[styles.nextInfoRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
                     <AppIcon name="clock" size={13} color={colors.textSecondary} />
                     <Text style={[styles.nextInfoText, { color: colors.textSecondary }]}>
                       {classes[1].time} – {classes[1].end}
                     </Text>
                   </View>
                   <Text style={[styles.metaDivider, { color: colors.border }]}>|</Text>
-                  <View style={styles.nextInfoRow}>
+                  <View style={[styles.nextInfoRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
                     <AppIcon name="map" size={13} color={colors.textSecondary} />
                     <Text
                       numberOfLines={1}
@@ -1714,8 +1747,9 @@ function HomeScreen({
               >
                 <AppIcon
                   name="chevron"
-                  size={19}
+                  size={18}
                   color={isDark ? "#081A33" : "#FFFFFF"}
+                  style={{ transform: [{ rotate: isRTL ? "180deg" : "0deg" }] }}
                 />
               </PressableScale>
             </View>
@@ -1723,22 +1757,23 @@ function HomeScreen({
         </View>
 
         {/* 5. Today's Schedule Section */}
-        <View style={styles.sectionHeading}>
+        <View style={[styles.sectionHeading, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
             {copy[lang].todaysSchedule}
           </Text>
           <TouchableOpacity
             onPress={() => navigate("timetable")}
             activeOpacity={0.7}
-            style={styles.viewAllRow}
+            style={[styles.viewAllRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}
           >
             <Text style={[styles.viewAllText, { color: isDark ? colors.accent : colors.secondary }]}>
               {copy[lang].viewAll}
             </Text>
             <AppIcon
               name="chevron"
-              size={14}
+              size={13}
               color={isDark ? colors.accent : colors.secondary}
+              style={{ transform: [{ rotate: isRTL ? "180deg" : "0deg" }] }}
             />
           </TouchableOpacity>
         </View>
@@ -1761,6 +1796,7 @@ function HomeScreen({
               onClick={() => navigate("class")}
               colors={colors}
               isLast={idx === classes.length - 1}
+              isRTL={isRTL}
             />
           ))}
         </View>
@@ -1773,24 +1809,25 @@ function HomeScreen({
             {
               backgroundColor: isDark ? "#142F52" : "#102B55",
               borderColor: isDark ? colors.border : "rgba(233, 181, 68, 0.3)",
+              flexDirection: isRTL ? "row-reverse" : "row",
             },
           ]}
         >
-          <View style={styles.attendanceSummaryLeft}>
+          <View style={[styles.attendanceSummaryLeft, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
             <View style={styles.attendanceIconWrap}>
-              <AppIcon name="users" size={24} color="#FFFFFF" />
+              <AppIcon name="users" size={22} color="#FFFFFF" />
             </View>
-            <View style={{ marginLeft: 16 }}>
-              <Text style={styles.attendanceSummaryLabel}>
+            <View style={{ marginLeft: isRTL ? 0 : 12, marginRight: isRTL ? 12 : 0 }}>
+              <Text style={[styles.attendanceSummaryLabel, { textAlign: isRTL ? "right" : "left" }]}>
                 {copy[lang].attendanceRate}
               </Text>
-              <Text style={styles.attendanceSummaryBig}>
+              <Text style={[styles.attendanceSummaryBig, { textAlign: isRTL ? "right" : "left" }]}>
                 {role === "student" ? "90%" : "6 / 6"}
               </Text>
-              <Text style={styles.attendanceSummarySub}>
+              <Text style={[styles.attendanceSummarySub, { textAlign: isRTL ? "right" : "left" }]}>
                 {role === "student"
-                  ? "18 présences · 2 absences"
-                  : "Séances de la journée"}
+                  ? (lang === "ar" ? "18 حضور · 2 غياب" : "18 présences · 2 absences")
+                  : (lang === "ar" ? "حصص اليوم المبرمجة" : "Séances de la journée")}
               </Text>
             </View>
           </View>
@@ -1799,19 +1836,24 @@ function HomeScreen({
           <View style={styles.attendanceSummaryRight}>
             <View style={styles.progressRingSim}>
               <View style={[styles.progressRingSegment, { borderColor: colors.accent }]} />
-              <AppIcon name="chevron" size={17} color="#FFFFFF" />
+              <AppIcon
+                name="chevron"
+                size={16}
+                color="#FFFFFF"
+                style={{ transform: [{ rotate: isRTL ? "180deg" : "0deg" }] }}
+              />
             </View>
           </View>
         </PressableScale>
 
         {/* 7. Quick Actions Grid */}
-        <View style={styles.sectionHeading}>
+        <View style={[styles.sectionHeading, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
             {copy[lang].quickActions}
           </Text>
         </View>
 
-        <View style={styles.quickActionsGrid}>
+        <View style={[styles.quickActionsGrid, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
           <PressableScale
             onPress={() => navigate("timetable")}
             style={[
@@ -1952,21 +1994,22 @@ function TimetableScreen({
   isDark: boolean;
 }) {
   const classes = role === "student" ? studentClasses : teacherClasses;
+  const isRTL = lang === "ar";
   const days = [
-    ["Lun", "17"],
-    ["Mar", "18"],
-    ["Mer", "19"],
-    ["Jeu", "20"],
-    ["Ven", "21"],
-    ["Sam", "22"],
+    [lang === "ar" ? "إثن" : lang === "en" ? "Mon" : "Lun", "17"],
+    [lang === "ar" ? "ثلا" : lang === "en" ? "Tue" : "Mar", "18"],
+    [lang === "ar" ? "أرب" : lang === "en" ? "Wed" : "Mer", "19"],
+    [lang === "ar" ? "خمي" : lang === "en" ? "Thu" : "Jeu", "20"],
+    [lang === "ar" ? "جمعة" : lang === "en" ? "Fri" : "Ven", "21"],
+    [lang === "ar" ? "سبت" : lang === "en" ? "Sat" : "Sam", "22"],
   ];
   const [selectedDay, setSelectedDay] = useState("18");
 
   return (
     <View style={{ flex: 1, backgroundColor: "transparent" }}>
       <AppHeader
-        title="Emploi du temps"
-        subtitle="17 – 22 mars 2025"
+        title={lang === "fr" ? "Emploi du temps" : lang === "ar" ? "جدول الحصص" : "Timetable"}
+        subtitle={lang === "fr" ? "17 – 22 mars 2025" : lang === "ar" ? "17 – 22 مارس 2025" : "Mar 17 – 22, 2025"}
         online={online}
         onToggleOnline={toggleOnline}
         lang={lang}
@@ -1983,6 +2026,7 @@ function TimetableScreen({
               backgroundColor: colors.card,
               borderColor: colors.border,
               shadowColor: isDark ? "#000" : "#102B55",
+              flexDirection: isRTL ? "row-reverse" : "row",
             },
           ]}
         >
@@ -2034,17 +2078,24 @@ function TimetableScreen({
           })}
         </View>
 
-        <View style={styles.weekControls}>
+        <View style={[styles.weekControls, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
           <PressableScale
             style={[
               styles.weekNavBtn,
               { backgroundColor: colors.surface, borderColor: colors.border },
             ]}
           >
-            <AppIcon name="back" size={16} color={colors.text} />
+            <AppIcon
+              name="back"
+              size={16}
+              color={colors.text}
+              style={{ transform: [{ rotate: isRTL ? "180deg" : "0deg" }] }}
+            />
           </PressableScale>
           <Text style={[styles.weekControlsText, { color: colors.text }]}>
-            {selectedDay === "18" ? "Mardi 18 mars" : `Journée du ${selectedDay} mars`}
+            {selectedDay === "18"
+              ? (lang === "ar" ? "الثلاثاء 18 مارس" : lang === "en" ? "Tuesday, Mar 18" : "Mardi 18 mars")
+              : (lang === "ar" ? `يوم ${selectedDay} مارس` : lang === "en" ? `Day of Mar ${selectedDay}` : `Journée du ${selectedDay} mars`)}
           </Text>
           <PressableScale
             style={[
@@ -2052,7 +2103,12 @@ function TimetableScreen({
               { backgroundColor: colors.surface, borderColor: colors.border },
             ]}
           >
-            <AppIcon name="chevron" size={16} color={colors.text} />
+            <AppIcon
+              name="chevron"
+              size={16}
+              color={colors.text}
+              style={{ transform: [{ rotate: isRTL ? "180deg" : "0deg" }] }}
+            />
           </PressableScale>
         </View>
 
@@ -2074,6 +2130,7 @@ function TimetableScreen({
                 onClick={() => navigate("class")}
                 colors={colors}
                 isLast={idx === classes.length - 1}
+                isRTL={isRTL}
               />
             ))}
           </View>
@@ -3555,12 +3612,20 @@ function ProfileScreen({
   const teacher = role === "teacher";
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+  const [helpModalVisible, setHelpModalVisible] = useState(false);
+  const isRTL = lang === "ar";
+
+  const themeList: { key: Theme; labelFr: string; labelEn: string; labelAr: string; icon: string }[] = [
+    { key: "light", labelFr: "Clair", labelEn: "Light", labelAr: "فاتح", icon: "sun" },
+    { key: "dark", labelFr: "Sombre", labelEn: "Dark", labelAr: "داكن", icon: "moon" },
+    { key: "system", labelFr: "Système", labelEn: "System", labelAr: "تلقائي", icon: "settings" },
+  ];
 
   return (
     <View style={{ flex: 1, backgroundColor: "transparent" }}>
       <AppHeader
-        title="Profil et réglages"
-        subtitle="Compte institutionnel"
+        title={lang === "fr" ? "Profil" : lang === "ar" ? "الملف الشخصي" : "Profile"}
+        subtitle={lang === "fr" ? "Compte institutionnel" : lang === "ar" ? "الحساب الجامعي" : "Institutional Account"}
         online={online}
         onToggleOnline={toggleOnline}
         lang={lang}
@@ -3568,7 +3633,7 @@ function ProfileScreen({
         isDark={isDark}
       />
       <ScrollView contentContainerStyle={styles.screenContent} showsVerticalScrollIndicator={false}>
-        {/* Identity Card */}
+        {/* 1. Identity & Account Card */}
         <View
           style={[
             styles.identityCard,
@@ -3576,6 +3641,7 @@ function ProfileScreen({
               backgroundColor: colors.card,
               borderColor: colors.border,
               shadowColor: isDark ? "#000" : "#102B55",
+              flexDirection: isRTL ? "row-reverse" : "row",
             },
           ]}
         >
@@ -3589,85 +3655,97 @@ function ProfileScreen({
               {teacher ? "SM" : "AB"}
             </Text>
           </View>
-          <View style={{ flex: 1, marginLeft: 16 }}>
-            <Text style={[styles.identityName, { color: colors.text }]}>
-              {teacher ? "Sonia Mansouri" : "Amine Ben Amor"}
-            </Text>
-            <Text style={[styles.identityDept, { color: colors.textSecondary }]}>
+          <View style={{ flex: 1, marginLeft: isRTL ? 0 : 12, marginRight: isRTL ? 12 : 0 }}>
+            <View style={{ flexDirection: isRTL ? "row-reverse" : "row", alignItems: "center", justifyContent: "space-between" }}>
+              <Text style={[styles.identityName, { color: colors.text, textAlign: isRTL ? "right" : "left" }]}>
+                {teacher ? "Sonia Mansouri" : "Amine Ben Amor"}
+              </Text>
+              <StatusBadge
+                state={teacher ? "warning" : "info"}
+                label={teacher ? buttonCopy[lang].teacher : buttonCopy[lang].student}
+                colors={colors}
+              />
+            </View>
+            <Text style={[styles.identityDept, { color: colors.textSecondary, textAlign: isRTL ? "right" : "left" }]}>
               {teacher ? "Département Informatique" : "ING2 · Groupe B"}
             </Text>
-            <Text style={[styles.identityEmail, { color: colors.accent }]}>
+            <Text style={[styles.identityEmail, { color: colors.accent, textAlign: isRTL ? "right" : "left" }]}>
               {teacher ? "sonia.mansouri@issatk.rnu.tn" : "2023-ING-0142"}
             </Text>
           </View>
         </View>
 
-        {/* Appearance Theme Selector */}
+        {/* 2. Appearance & Theme Controls */}
         <View style={styles.settingsSection}>
-          <Text style={[styles.settingsSectionTitle, { color: colors.textSecondary }]}>
-            Apparence
+          <Text style={[styles.settingsSectionTitle, { color: colors.textSecondary, textAlign: isRTL ? "right" : "left" }]}>
+            {lang === "fr" ? "Apparence" : lang === "ar" ? "المظهر" : "Appearance"}
           </Text>
-          <View style={styles.themeOptionsGrid}>
-            {(["light", "dark", "system"] as Theme[]).map((t) => {
-              const selected = theme === t;
+          <View
+            style={[
+              styles.themeSegmentContainer,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                shadowColor: isDark ? "#000" : "#102B55",
+                flexDirection: isRTL ? "row-reverse" : "row",
+              },
+            ]}
+          >
+            {themeList.map((t) => {
+              const selected = theme === t.key;
               return (
                 <PressableScale
-                  key={t}
+                  key={t.key}
                   style={[
-                    styles.themeOptionBtn,
-                    {
-                      backgroundColor: colors.card,
-                      borderColor: selected ? colors.accent : colors.border,
-                      borderWidth: selected ? 2 : 1,
-                      shadowColor: isDark ? "#000" : "#102B55",
-                    },
+                    styles.themeSegmentBtn,
+                    selected && [
+                      styles.themeSegmentBtnActive,
+                      {
+                        backgroundColor: isDark ? colors.surfaceRaised : colors.primarySoft,
+                        borderColor: colors.accent,
+                      },
+                    ],
                   ]}
-                  onPress={() => setTheme(t)}
+                  onPress={() => setTheme(t.key)}
                 >
                   <View
                     style={[
-                      styles.themePreviewBox,
-                      t === "light"
-                        ? { backgroundColor: "#F4F7FB" }
-                        : t === "dark"
-                        ? { backgroundColor: "#081A33" }
-                        : { backgroundColor: "#E4EAF1" },
+                      styles.themeSegmentIconWrap,
+                      {
+                        backgroundColor: selected ? (isDark ? "rgba(233, 181, 68, 0.16)" : colors.accentSoft) : "transparent",
+                      },
                     ]}
                   >
-                    <View
-                      style={[
-                        styles.themePreviewBar,
-                        { backgroundColor: t === "dark" ? "#102B55" : "#174A83" },
-                      ]}
-                    />
-                    <View
-                      style={[
-                        styles.themePreviewBlock,
-                        { backgroundColor: t === "dark" ? "#142F52" : "#FFFFFF" },
-                      ]}
+                    <AppIcon
+                      name={t.icon}
+                      size={16}
+                      color={selected ? colors.accent : colors.textSecondary}
                     />
                   </View>
                   <Text
                     style={[
-                      styles.themeOptionLabel,
+                      styles.themeSegmentLabel,
                       {
-                        color: selected ? colors.accent : colors.text,
+                        color: selected ? (isDark ? "#FFFFFF" : colors.primary) : colors.textSecondary,
                         fontWeight: selected ? "800" : "600",
                       },
                     ]}
                   >
-                    {t === "light" ? "Clair" : t === "dark" ? "Sombre" : "Système"}
+                    {lang === "fr" ? t.labelFr : lang === "ar" ? t.labelAr : t.labelEn}
                   </Text>
+                  {selected && (
+                    <View style={[styles.themeActiveDot, { backgroundColor: colors.accent }]} />
+                  )}
                 </PressableScale>
               );
             })}
           </View>
         </View>
 
-        {/* Preferences Section */}
+        {/* 3. Preferences Section */}
         <View style={styles.settingsSection}>
-          <Text style={[styles.settingsSectionTitle, { color: colors.textSecondary }]}>
-            Préférences
+          <Text style={[styles.settingsSectionTitle, { color: colors.textSecondary, textAlign: isRTL ? "right" : "left" }]}>
+            {lang === "fr" ? "Préférences" : lang === "ar" ? "التفضيلات" : "Preferences"}
           </Text>
           <View
             style={[
@@ -3679,53 +3757,64 @@ function ProfileScreen({
               },
             ]}
           >
+            {/* Language Setting */}
             <TouchableOpacity
-              style={[styles.settingsRow, { borderBottomColor: colors.border }]}
+              style={[
+                styles.settingsRow,
+                {
+                  borderBottomColor: colors.border,
+                  flexDirection: isRTL ? "row-reverse" : "row",
+                },
+              ]}
               onPress={() => setLang(lang === "fr" ? "en" : lang === "en" ? "ar" : "fr")}
               activeOpacity={0.7}
             >
-              <AppIcon name="language" size={19} color={colors.primary} />
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={[styles.settingsRowTitle, { color: colors.text }]}>
+              <AppIcon name="language" size={18} color={colors.primary} />
+              <View style={{ flex: 1, marginLeft: isRTL ? 0 : 12, marginRight: isRTL ? 12 : 0 }}>
+                <Text style={[styles.settingsRowTitle, { color: colors.text, textAlign: isRTL ? "right" : "left" }]}>
                   {lang === "fr" ? "Langue" : lang === "en" ? "Language" : "اللغة"}
                 </Text>
-                <Text style={[styles.settingsRowSub, { color: colors.textSecondary }]}>
+                <Text style={[styles.settingsRowSub, { color: colors.textSecondary, textAlign: isRTL ? "right" : "left" }]}>
                   {lang === "fr" ? "Français" : lang === "en" ? "English" : "العربية"}
                 </Text>
               </View>
-              <Text style={[styles.settingsRowValue, { color: colors.textSecondary }]}>
+              <Text style={[styles.settingsRowValue, { color: colors.accent }]}>
                 {lang === "fr" ? "FR" : lang === "en" ? "EN" : "عربي"}
               </Text>
-              <AppIcon name="chevron" size={16} color={colors.textSecondary} />
+              <AppIcon name="chevron" size={14} color={colors.textSecondary} />
             </TouchableOpacity>
 
+            {/* Notifications Setting */}
             <TouchableOpacity
               style={[
                 styles.settingsRow,
                 {
                   borderBottomColor: colors.border,
                   borderBottomWidth: teacher ? 1 : 0,
+                  flexDirection: isRTL ? "row-reverse" : "row",
                 },
               ]}
               onPress={() => setNotificationsEnabled(!notificationsEnabled)}
               activeOpacity={0.7}
             >
-              <AppIcon name="bell" size={19} color={colors.accent} />
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={[styles.settingsRowTitle, { color: colors.text }]}>
-                  Notifications
+              <AppIcon name="bell" size={18} color={colors.accent} />
+              <View style={{ flex: 1, marginLeft: isRTL ? 0 : 12, marginRight: isRTL ? 12 : 0 }}>
+                <Text style={[styles.settingsRowTitle, { color: colors.text, textAlign: isRTL ? "right" : "left" }]}>
+                  {lang === "fr" ? "Notifications" : lang === "ar" ? "الإشعارات" : "Notifications"}
                 </Text>
-                <Text style={[styles.settingsRowSub, { color: colors.textSecondary }]}>
-                  Cours, présences et annonces
+                <Text style={[styles.settingsRowSub, { color: colors.textSecondary, textAlign: isRTL ? "right" : "left" }]}>
+                  {lang === "fr"
+                    ? "Cours, présences et annonces"
+                    : lang === "ar"
+                    ? "الحصص والحضور والإعلانات"
+                    : "Classes, attendance & alerts"}
                 </Text>
               </View>
               <View
                 style={[
                   styles.switchTrack,
                   {
-                    backgroundColor: notificationsEnabled
-                      ? colors.accent
-                      : colors.border,
+                    backgroundColor: notificationsEnabled ? colors.accent : colors.border,
                   },
                 ]}
               >
@@ -3738,47 +3827,99 @@ function ProfileScreen({
               </View>
             </TouchableOpacity>
 
+            {/* Teacher Requests (if teacher) */}
             {teacher && (
               <TouchableOpacity
-                style={[styles.settingsRow, { borderBottomWidth: 0 }]}
+                style={[
+                  styles.settingsRow,
+                  {
+                    borderBottomWidth: 0,
+                    flexDirection: isRTL ? "row-reverse" : "row",
+                  },
+                ]}
                 onPress={() => navigate("requests")}
                 activeOpacity={0.7}
               >
-                <AppIcon name="file" size={19} color={colors.primary} />
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={[styles.settingsRowTitle, { color: colors.text }]}>
-                    Mes demandes
+                <AppIcon name="file" size={18} color={colors.primary} />
+                <View style={{ flex: 1, marginLeft: isRTL ? 0 : 12, marginRight: isRTL ? 12 : 0 }}>
+                  <Text style={[styles.settingsRowTitle, { color: colors.text, textAlign: isRTL ? "right" : "left" }]}>
+                    {lang === "fr" ? "Mes demandes" : lang === "ar" ? "طلباتي" : "My Requests"}
                   </Text>
-                  <Text style={[styles.settingsRowSub, { color: colors.textSecondary }]}>
-                    Historique administratif
+                  <Text style={[styles.settingsRowSub, { color: colors.textSecondary, textAlign: isRTL ? "right" : "left" }]}>
+                    {lang === "fr"
+                      ? "Historique administratif"
+                      : lang === "ar"
+                      ? "السجل الإداري والطلبات"
+                      : "Administrative history"}
                   </Text>
                 </View>
-                <AppIcon name="chevron" size={16} color={colors.textSecondary} />
+                <AppIcon name="chevron" size={14} color={colors.textSecondary} />
               </TouchableOpacity>
             )}
           </View>
         </View>
 
+        {/* 4. Support & Institution Info */}
+        <View style={styles.settingsSection}>
+          <Text style={[styles.settingsSectionTitle, { color: colors.textSecondary, textAlign: isRTL ? "right" : "left" }]}>
+            {lang === "fr" ? "Assistance" : lang === "ar" ? "المساعدة" : "Support"}
+          </Text>
+          <View
+            style={[
+              styles.settingsBlock,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                shadowColor: isDark ? "#000" : "#102B55",
+              },
+            ]}
+          >
+            <TouchableOpacity
+              style={[
+                styles.settingsRow,
+                {
+                  borderBottomWidth: 0,
+                  flexDirection: isRTL ? "row-reverse" : "row",
+                },
+              ]}
+              onPress={() => setHelpModalVisible(true)}
+              activeOpacity={0.7}
+            >
+              <AppIcon name="info" size={18} color={colors.info} />
+              <View style={{ flex: 1, marginLeft: isRTL ? 0 : 12, marginRight: isRTL ? 12 : 0 }}>
+                <Text style={[styles.settingsRowTitle, { color: colors.text, textAlign: isRTL ? "right" : "left" }]}>
+                  {lang === "fr" ? "Service scolarité ISSATK" : lang === "ar" ? "مصلحة شؤون الطلبة" : "ISSATK Student Affairs"}
+                </Text>
+                <Text style={[styles.settingsRowSub, { color: colors.textSecondary, textAlign: isRTL ? "right" : "left" }]}>
+                  {lang === "fr" ? "Bureau A12 · Assistance & contact" : lang === "ar" ? "مكتب A12 · الدعم والتواصل" : "Office A12 · Support & contact"}
+                </Text>
+              </View>
+              <AppIcon name="chevron" size={14} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* 5. Logout Button */}
         <PressableScale
-          style={[styles.dangerButton, { backgroundColor: colors.dangerSoft, marginTop: 24 }]}
+          style={[styles.dangerButton, { backgroundColor: colors.dangerSoft, marginTop: 14 }]}
           onPress={() => setLogoutModalVisible(true)}
         >
           <View
             style={[
               styles.buttonContentRow,
-              { flexDirection: lang === "ar" ? "row-reverse" : "row" },
+              { flexDirection: isRTL ? "row-reverse" : "row" },
             ]}
           >
             <View style={styles.buttonIconWrap}>
-              <AppIcon name="logout" size={18} color={colors.danger} />
+              <AppIcon name="logout" size={17} color={colors.danger} />
             </View>
             <Text
               style={[
                 styles.dangerButtonText,
                 {
                   color: colors.danger,
-                  marginLeft: lang === "ar" ? 0 : 8,
-                  marginRight: lang === "ar" ? 8 : 0,
+                  marginLeft: isRTL ? 0 : 8,
+                  marginRight: isRTL ? 8 : 0,
                 },
               ]}
             >
@@ -3788,9 +3929,10 @@ function ProfileScreen({
         </PressableScale>
 
         <Text style={[styles.appVersion, { color: colors.textSecondary }]}>
-          My ISSATkr · Version 1.0 (Expo React Native)
+          My ISSATkr · Version 1.0 (ISSAT Kairouan)
         </Text>
 
+        {/* Logout Modal */}
         <SmoothDialog
           visible={logoutModalVisible}
           onClose={() => setLogoutModalVisible(false)}
@@ -3810,6 +3952,23 @@ function ProfileScreen({
           cancelText={buttonCopy[lang].cancel}
           colors={colors}
           icon="logout"
+        />
+
+        {/* Help Modal */}
+        <SmoothDialog
+          visible={helpModalVisible}
+          onClose={() => setHelpModalVisible(false)}
+          title={lang === "fr" ? "Service scolarité ISSATK" : lang === "ar" ? "مصلحة شؤون الطلبة" : "Student Affairs Office"}
+          message={
+            lang === "fr"
+              ? "Bureau de scolarité A12, Institut Supérieur des Sciences Appliquées et de Technologie de Kairouan.\nEmail : scolarite@issatk.rnu.tn"
+              : lang === "ar"
+              ? "مكتب شؤون الطلبة A12، المعهد العالي للعلوم التطبيقية والتكنولوجيا بالقيروان.\nالبريد الإلكتروني: scolarite@issatk.rnu.tn"
+              : "Office A12, Higher Institute of Applied Sciences and Technology of Kairouan.\nEmail: scolarite@issatk.rnu.tn"
+          }
+          confirmText={buttonCopy[lang].done}
+          colors={colors}
+          icon="info"
         />
       </ScrollView>
     </View>
@@ -4182,7 +4341,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 0,
     right: 0,
-    height: 340,
+    height: 250,
     overflow: "hidden",
     zIndex: 0,
   },
@@ -4190,7 +4349,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 0,
     right: -10,
-    height: 345,
+    height: 255,
   },
 
   /* ==========================================================================
@@ -4200,22 +4359,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 22,
-    paddingTop: 12,
-    paddingBottom: 8,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 6,
     zIndex: 5,
   },
   homeTopActions: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 8,
   },
   connectivity: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 14,
     borderWidth: 1,
     gap: 5,
   },
@@ -4224,55 +4383,55 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   notificationBellCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     borderWidth: 1,
     justifyContent: "center",
     alignItems: "center",
     position: "relative",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 5,
+    elevation: 2,
   },
   notificationRedDot: {
     position: "absolute",
-    top: 9,
-    right: 10,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    top: 7,
+    right: 8,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
     borderWidth: 1.5,
   },
 
-  /* Spacious Greeting Section */
+  /* Compact Greeting Section */
   homeGreetingSection: {
-    paddingTop: 16,
-    paddingBottom: 24,
+    paddingTop: 8,
+    paddingBottom: 14,
     maxWidth: "58%", // leaves right side open for prominent university building
   },
   greetingSalutation: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: "700",
-    letterSpacing: -0.4,
-    lineHeight: 30,
+    letterSpacing: -0.3,
+    lineHeight: 22,
   },
   greetingName: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: "900",
-    letterSpacing: -0.5,
-    lineHeight: 32,
+    letterSpacing: -0.4,
+    lineHeight: 26,
     marginTop: 2,
   },
   greetingDateRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    marginTop: 8,
+    gap: 5,
+    marginTop: 6,
   },
   greetingDateText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "600",
   },
 
@@ -4280,9 +4439,9 @@ const styles = StyleSheet.create({
      STANDARD HEADER FOR OTHER SCREENS
      ========================================================================== */
   standardHeader: {
-    paddingHorizontal: 22,
-    paddingTop: 12,
-    paddingBottom: 14,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 10,
     borderBottomWidth: 1,
     zIndex: 5,
   },
@@ -4292,13 +4451,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   backButtonWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 11,
     borderWidth: 1,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
+    marginRight: 10,
   },
   titleStack: {
     flex: 1,
@@ -4307,18 +4466,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    marginBottom: 3,
+    marginBottom: 2,
   },
   eyebrow: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: "700",
     letterSpacing: 0.4,
     textTransform: "uppercase",
   },
   standardHeaderTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "800",
-    letterSpacing: -0.4,
+    letterSpacing: -0.3,
   },
   headerActions: {
     flexDirection: "row",
@@ -4326,9 +4485,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 11,
     borderWidth: 1,
     justifyContent: "center",
     alignItems: "center",
@@ -4340,44 +4499,40 @@ const styles = StyleSheet.create({
   },
   unreadDotBadge: {
     position: "absolute",
-    top: 7,
-    right: 7,
-    width: 7,
-    height: 7,
-    borderRadius: 4,
+    top: 6,
+    right: 6,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     borderWidth: 1.5,
   },
 
   /* ==========================================================================
      SPACIOUS SCREEN CONTENT & SECTIONS
-     - 22px horizontal screen padding
-     - 26–30px major section spacing
-     - 16–20px card internal padding
-     - 110px bottom padding for smooth scrolling above bottom nav
      ========================================================================== */
   screenContent: {
-    paddingHorizontal: 22,
-    paddingTop: 8,
-    paddingBottom: 110,
+    paddingHorizontal: 16,
+    paddingTop: 6,
+    paddingBottom: 85,
   },
   offlineNotice: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 14,
+    padding: 12,
     borderRadius: 14,
     borderWidth: 1,
-    marginBottom: 18,
-    gap: 12,
+    marginBottom: 14,
+    gap: 10,
   },
   offlineNoticeTexts: {
     flex: 1,
   },
   offlineNoticeTitle: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: "700",
   },
   offlineNoticeDesc: {
-    fontSize: 11,
+    fontSize: 10.5,
     marginTop: 2,
   },
 
@@ -4385,19 +4540,19 @@ const styles = StyleSheet.create({
   badge: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 14,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
     alignSelf: "flex-start",
-    gap: 6,
+    gap: 5,
   },
   badgeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
   },
   badgeText: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: "700",
   },
 
@@ -4405,90 +4560,90 @@ const styles = StyleSheet.create({
      NEXT CLASS CARD (Exact Heritage Navy Reference Design)
      ========================================================================== */
   nextCard: {
-    borderRadius: 24,
+    borderRadius: 18,
     borderWidth: 1,
     flexDirection: "row",
     overflow: "hidden",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 4,
-    marginBottom: 28, // 28px section spacing
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.07,
+    shadowRadius: 10,
+    elevation: 3,
+    marginBottom: 14,
   },
   nextCardAccentBar: {
-    width: 5,
+    width: 4,
   },
   nextCardBody: {
     flex: 1,
-    padding: 20,
+    padding: 14,
   },
   nextCardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 8,
   },
   nextBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
   },
   nextBadgeText: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: "800",
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   timeBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 9,
+    paddingVertical: 3.5,
+    borderRadius: 10,
   },
   timeBadgeText: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: "700",
   },
   nextCardContentRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: 4,
+    marginTop: 2,
   },
   nextTitle: {
-    fontSize: 19,
+    fontSize: 16,
     fontWeight: "800",
-    letterSpacing: -0.4,
-    marginBottom: 8,
+    letterSpacing: -0.3,
+    marginBottom: 6,
   },
   nextMetaRow: {
     flexDirection: "row",
     alignItems: "center",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 7,
   },
   nextInfoRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
+    gap: 4,
   },
   metaDivider: {
-    fontSize: 13,
+    fontSize: 12,
   },
   nextInfoText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: "600",
   },
   nextCircleBtn: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.16,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.14,
+    shadowRadius: 4,
+    elevation: 3,
     marginLeft: 6,
   },
 
@@ -4497,20 +4652,20 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 14,
-    marginTop: 6,
+    marginBottom: 10,
+    marginTop: 4,
   },
   sectionKicker: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: "700",
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: 2,
   },
   sectionTitle: {
-    fontSize: 19,
+    fontSize: 17,
     fontWeight: "800",
-    letterSpacing: -0.4,
+    letterSpacing: -0.3,
   },
   viewAllRow: {
     flexDirection: "row",
@@ -4518,37 +4673,37 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   viewAllText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "700",
   },
 
   /* Timeline List Card */
   timelineList: {
-    borderRadius: 22,
+    borderRadius: 18,
     borderWidth: 1,
     overflow: "hidden",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
     elevation: 2,
-    marginBottom: 28, // 28px section spacing
+    marginBottom: 14,
   },
   classRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 10,
   },
   classTimeCol: {
-    width: 50,
+    width: 48,
   },
   classTimeMain: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: "800",
   },
   classTimeSub: {
-    fontSize: 11,
+    fontSize: 10.5,
     marginTop: 2,
   },
   timelineMark: {
@@ -4560,33 +4715,33 @@ const styles = StyleSheet.create({
   timelineLine: {
     position: "absolute",
     width: 1.5,
-    top: -24,
-    bottom: -24,
+    top: -20,
+    bottom: -20,
   },
   timelineDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
     borderWidth: 2,
     zIndex: 2,
   },
   classContentCol: {
     flex: 1,
-    gap: 4,
+    gap: 3,
   },
   classHeadingRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 5,
   },
   classSubject: {
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: "700",
   },
   unreadDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
   },
   classMeta: {
     fontSize: 11,
@@ -4598,15 +4753,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 22,
-    borderRadius: 24,
+    padding: 14,
+    borderRadius: 18,
     borderWidth: 1,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.14,
-    shadowRadius: 12,
-    elevation: 4,
-    marginBottom: 28, // 28px section spacing
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 3,
+    marginBottom: 14,
   },
   attendanceSummaryLeft: {
     flexDirection: "row",
@@ -4614,40 +4769,40 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   attendanceIconWrap: {
-    width: 50,
-    height: 50,
-    borderRadius: 16,
+    width: 42,
+    height: 42,
+    borderRadius: 13,
     backgroundColor: "rgba(255, 255, 255, 0.12)",
     justifyContent: "center",
     alignItems: "center",
   },
   attendanceSummaryLabel: {
     color: "rgba(255, 255, 255, 0.8)",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "600",
     letterSpacing: 0.3,
   },
   attendanceSummaryBig: {
     color: "#FFFFFF",
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: "900",
-    letterSpacing: -0.6,
-    marginTop: 2,
+    letterSpacing: -0.5,
+    marginTop: 1,
   },
   attendanceSummarySub: {
     color: "rgba(255, 255, 255, 0.7)",
-    fontSize: 11,
-    marginTop: 2,
+    fontSize: 10.5,
+    marginTop: 1,
   },
   attendanceSummaryRight: {
     justifyContent: "center",
     alignItems: "center",
   },
   progressRingSim: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    borderWidth: 3.5,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 3,
     borderColor: "rgba(255, 255, 255, 0.18)",
     justifyContent: "center",
     alignItems: "center",
@@ -4655,12 +4810,12 @@ const styles = StyleSheet.create({
   },
   progressRingSegment: {
     position: "absolute",
-    top: -3.5,
-    left: -3.5,
-    right: -3.5,
-    bottom: -3.5,
-    borderRadius: 23,
-    borderWidth: 3.5,
+    top: -3,
+    left: -3,
+    right: -3,
+    bottom: -3,
+    borderRadius: 20,
+    borderWidth: 3,
     borderTopColor: "transparent",
     borderLeftColor: "transparent",
   },
@@ -4669,32 +4824,32 @@ const styles = StyleSheet.create({
   quickActionsGrid: {
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: 12,
-    marginBottom: 10,
+    gap: 8,
+    marginBottom: 8,
   },
   quickActionCard: {
     flex: 1,
-    borderRadius: 20,
+    borderRadius: 14,
     borderWidth: 1,
-    paddingVertical: 16,
-    paddingHorizontal: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
     alignItems: "center",
     justifyContent: "center",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
     elevation: 2,
   },
   quickActionIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 36,
+    height: 36,
+    borderRadius: 11,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 6,
   },
   quickActionLabel: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: "700",
     textAlign: "center",
   },
@@ -4703,29 +4858,29 @@ const styles = StyleSheet.create({
   requestStrip: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
-    borderRadius: 20,
+    padding: 12,
+    borderRadius: 16,
     borderWidth: 1,
-    marginTop: 18,
-    gap: 14,
+    marginTop: 12,
+    gap: 12,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
-    shadowRadius: 6,
+    shadowRadius: 5,
     elevation: 2,
   },
   requestIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
   },
   requestStripTitle: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: "700",
   },
   requestStripSub: {
-    fontSize: 11,
+    fontSize: 10.5,
     marginTop: 2,
   },
 
@@ -4733,152 +4888,152 @@ const styles = StyleSheet.create({
   dayPicker: {
     flexDirection: "row",
     justifyContent: "space-between",
-    padding: 8,
-    borderRadius: 20,
+    padding: 5,
+    borderRadius: 16,
     borderWidth: 1,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
-    shadowRadius: 6,
+    shadowRadius: 5,
     elevation: 2,
   },
   dayPickerItem: {
     flex: 1,
     alignItems: "center",
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
   },
   dayPickerItemSelected: {
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
     elevation: 2,
   },
   dayPickerDay: {
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: "700",
     textTransform: "uppercase",
   },
   dayPickerDate: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "800",
-    marginTop: 3,
+    marginTop: 2,
   },
   weekControls: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginVertical: 18,
+    marginVertical: 12,
   },
   weekNavBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 11,
+    width: 32,
+    height: 32,
+    borderRadius: 9,
     borderWidth: 1,
     justifyContent: "center",
     alignItems: "center",
   },
   weekControlsText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "800",
   },
 
   /* Attendance student view */
   summaryGrid: {
     flexDirection: "row",
-    borderRadius: 20,
+    borderRadius: 16,
     borderWidth: 1,
     overflow: "hidden",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
-    shadowRadius: 6,
+    shadowRadius: 5,
     elevation: 2,
   },
   summaryCell: {
     flex: 1,
     alignItems: "center",
-    paddingVertical: 18,
+    paddingVertical: 12,
     borderRightWidth: 1,
   },
   summaryNum: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: "900",
   },
   summaryLabel: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: "600",
-    marginTop: 3,
+    marginTop: 2,
   },
   filterRow: {
     flexDirection: "row",
-    gap: 10,
-    marginVertical: 18,
+    gap: 8,
+    marginVertical: 12,
   },
   filterChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
     borderWidth: 1,
   },
   filterChipText: {
-    fontSize: 12,
+    fontSize: 11.5,
   },
   recordList: {
-    borderRadius: 20,
+    borderRadius: 16,
     borderWidth: 1,
     overflow: "hidden",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
-    shadowRadius: 6,
+    shadowRadius: 5,
     elevation: 2,
   },
   recordRow: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
-    gap: 12,
+    padding: 12,
+    gap: 10,
   },
   statusMarkCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     justifyContent: "center",
     alignItems: "center",
   },
   recordSubject: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: "700",
   },
   recordMeta: {
-    fontSize: 11,
+    fontSize: 10.5,
     marginTop: 2,
   },
   actionCard: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 18,
-    borderRadius: 20,
+    padding: 12,
+    borderRadius: 16,
     borderWidth: 1,
-    marginTop: 18,
-    gap: 14,
+    marginTop: 12,
+    gap: 12,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
-    shadowRadius: 6,
+    shadowRadius: 5,
     elevation: 2,
   },
   actionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 13,
+    width: 38,
+    height: 38,
+    borderRadius: 11,
     justifyContent: "center",
     alignItems: "center",
   },
   actionCardTitle: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: "700",
   },
   actionCardSub: {
-    fontSize: 11,
+    fontSize: 10.5,
     marginTop: 2,
   },
 
@@ -4886,106 +5041,106 @@ const styles = StyleSheet.create({
   networkWarning: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 14,
-    borderRadius: 14,
-    marginBottom: 16,
+    padding: 10,
+    borderRadius: 12,
+    marginBottom: 12,
   },
   networkWarningTitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "700",
   },
   networkWarningDesc: {
-    fontSize: 11,
-    marginTop: 2,
+    fontSize: 10.5,
+    marginTop: 1,
   },
   rosterSummaryRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 10,
   },
   rosterSummaryCount: {
-    fontSize: 12,
+    fontSize: 11.5,
   },
   legendRow: {
     flexDirection: "row",
     alignItems: "center",
   },
   legendDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     marginRight: 4,
   },
   legendText: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: "600",
   },
   rosterList: {
-    borderRadius: 20,
+    borderRadius: 16,
     borderWidth: 1,
     overflow: "hidden",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
-    shadowRadius: 6,
+    shadowRadius: 5,
     elevation: 2,
   },
   studentRow: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 14,
-    gap: 12,
+    padding: 10,
+    gap: 10,
   },
   avatarCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     justifyContent: "center",
     alignItems: "center",
   },
   avatarText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "800",
   },
   studentName: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: "700",
   },
   studentId: {
-    fontSize: 11,
+    fontSize: 10.5,
     marginTop: 1,
   },
   attendanceToggleRow: {
     flexDirection: "row",
-    gap: 8,
+    gap: 6,
   },
   toggleBtn: {
-    width: 38,
-    height: 36,
-    borderRadius: 10,
+    width: 34,
+    height: 32,
+    borderRadius: 8,
     borderWidth: 1,
     justifyContent: "center",
     alignItems: "center",
   },
   toggleBtnText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "800",
   },
   stickySubmit: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 18,
-    borderRadius: 20,
+    padding: 12,
+    borderRadius: 16,
     borderWidth: 1,
-    marginTop: 18,
+    marginTop: 12,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
-    shadowRadius: 6,
+    shadowRadius: 5,
     elevation: 2,
   },
   stickySubmitCount: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: "600",
   },
 
@@ -4993,51 +5148,51 @@ const styles = StyleSheet.create({
   courseHero: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 18,
-    borderRadius: 22,
+    padding: 14,
+    borderRadius: 18,
     borderWidth: 1,
-    gap: 16,
+    gap: 12,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
-    shadowRadius: 6,
+    shadowRadius: 5,
     elevation: 2,
   },
   courseCodeBadge: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 13,
     borderWidth: 1,
     justifyContent: "center",
     alignItems: "center",
   },
   courseCodeText: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: "900",
   },
   courseHeroTitle: {
-    fontSize: 19,
+    fontSize: 17,
     fontWeight: "800",
     letterSpacing: -0.3,
   },
   courseHeroSub: {
-    fontSize: 12,
+    fontSize: 11.5,
     marginTop: 2,
   },
   detailGrid: {
     flexDirection: "row",
-    gap: 12,
-    marginVertical: 14,
+    gap: 8,
+    marginVertical: 10,
   },
   detailGridCell: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    padding: 15,
-    borderRadius: 16,
+    padding: 10,
+    borderRadius: 13,
     borderWidth: 1,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
-    shadowRadius: 6,
+    shadowRadius: 5,
     elevation: 2,
   },
   detailCellLabel: {
@@ -5053,46 +5208,46 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 16,
-    borderRadius: 16,
+    padding: 12,
+    borderRadius: 14,
     borderWidth: 1,
-    marginBottom: 18,
+    marginBottom: 14,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
-    shadowRadius: 6,
+    shadowRadius: 5,
     elevation: 2,
   },
   statusPanelLabel: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: "600",
   },
   statusPanelValue: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "700",
-    marginTop: 2,
+    marginTop: 1,
   },
   classActions: {
-    gap: 12,
+    gap: 10,
   },
   inlineWarning: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 12,
-    borderRadius: 12,
-    gap: 10,
+    padding: 10,
+    borderRadius: 10,
+    gap: 8,
   },
   inlineWarningText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: "500",
     flex: 1,
   },
   announcementCard: {
-    padding: 18,
-    borderRadius: 20,
+    padding: 14,
+    borderRadius: 16,
     borderWidth: 1,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
-    shadowRadius: 6,
+    shadowRadius: 5,
     elevation: 2,
   },
   announcementHeader: {
@@ -5100,63 +5255,63 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   announcementIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 11,
+    width: 32,
+    height: 32,
+    borderRadius: 9,
     justifyContent: "center",
     alignItems: "center",
   },
   announcementTitle: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: "700",
   },
   announcementTime: {
-    fontSize: 11,
+    fontSize: 10.5,
   },
   announcementBody: {
-    fontSize: 13,
-    lineHeight: 19,
-    marginVertical: 12,
+    fontSize: 12,
+    lineHeight: 18,
+    marginVertical: 10,
   },
   announcementAction: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: "700",
   },
 
   /* Notifications */
   notificationList: {
-    borderRadius: 20,
+    borderRadius: 16,
     borderWidth: 1,
     overflow: "hidden",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
-    shadowRadius: 6,
+    shadowRadius: 5,
     elevation: 2,
   },
   notificationRow: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
-    gap: 14,
+    padding: 12,
+    gap: 10,
   },
   noticeIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 34,
+    height: 34,
+    borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
   },
   notificationTitleText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "700",
   },
   notificationSubText: {
-    fontSize: 12,
-    marginTop: 3,
+    fontSize: 11.5,
+    marginTop: 2,
   },
   notificationTimeText: {
-    fontSize: 11,
-    marginTop: 3,
+    fontSize: 10.5,
+    marginTop: 2,
   },
 
   /* Scanner screen */
@@ -5552,88 +5707,100 @@ const styles = StyleSheet.create({
   identityCard: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 22,
-    borderRadius: 24,
+    padding: 14,
+    borderRadius: 18,
     borderWidth: 1,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
     elevation: 2,
-    marginBottom: 24,
+    marginBottom: 14,
   },
   avatarLarge: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    borderWidth: 2,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    borderWidth: 1.5,
     justifyContent: "center",
     alignItems: "center",
   },
   avatarLargeText: {
-    fontSize: 20,
-    fontWeight: "900",
+    fontSize: 16,
+    fontWeight: "800",
   },
   identityName: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: "800",
     letterSpacing: -0.3,
   },
   identityDept: {
-    fontSize: 12,
-    marginTop: 3,
+    fontSize: 11.5,
+    marginTop: 2,
   },
   identityEmail: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: "700",
-    marginTop: 3,
+    marginTop: 2,
   },
   settingsSection: {
-    marginBottom: 24,
+    marginBottom: 16,
   },
   settingsSectionTitle: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "700",
     textTransform: "uppercase",
     letterSpacing: 0.5,
-    marginBottom: 10,
-    marginLeft: 4,
+    marginBottom: 8,
+    marginLeft: 2,
   },
-  themeOptionsGrid: {
+  themeSegmentContainer: {
     flexDirection: "row",
-    gap: 12,
-  },
-  themeOptionBtn: {
-    flex: 1,
-    padding: 12,
     borderRadius: 16,
-    alignItems: "center",
+    borderWidth: 1,
+    padding: 4,
+    gap: 6,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 6,
     elevation: 2,
   },
-  themePreviewBox: {
-    width: "100%",
-    height: 42,
-    borderRadius: 10,
-    padding: 6,
-    justifyContent: "space-between",
-    marginBottom: 10,
+  themeSegmentBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 9,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "transparent",
+    gap: 6,
   },
-  themePreviewBar: {
-    height: 6,
-    width: "55%",
-    borderRadius: 3,
+  themeSegmentBtnActive: {
+    borderWidth: 1.5,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  themePreviewBlock: {
-    height: 16,
-    borderRadius: 5,
+  themeSegmentIconWrap: {
+    width: 26,
+    height: 26,
+    borderRadius: 7,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  themeOptionLabel: {
+  themeSegmentLabel: {
     fontSize: 12,
   },
+  themeActiveDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    marginLeft: 2,
+  },
   settingsBlock: {
-    borderRadius: 20,
+    borderRadius: 16,
     borderWidth: 1,
     overflow: "hidden",
     shadowOffset: { width: 0, height: 2 },
@@ -5644,65 +5811,66 @@ const styles = StyleSheet.create({
   settingsRow: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     borderBottomWidth: 1,
   },
   settingsRowTitle: {
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: "700",
   },
   settingsRowSub: {
-    fontSize: 11,
+    fontSize: 10.5,
     marginTop: 2,
   },
   settingsRowValue: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: "700",
     marginRight: 6,
   },
   switchTrack: {
-    width: 46,
-    height: 26,
-    borderRadius: 13,
-    padding: 2.5,
+    width: 44,
+    height: 24,
+    borderRadius: 12,
+    padding: 2,
     justifyContent: "center",
   },
   switchThumb: {
-    width: 21,
-    height: 21,
-    borderRadius: 10.5,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     backgroundColor: "#ffffff",
   },
   switchThumbActive: {
     alignSelf: "flex-end",
   },
   dangerButton: {
-    minHeight: 52,
-    borderRadius: 16,
+    minHeight: 46,
+    borderRadius: 14,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 11,
   },
   dangerButtonIconWrap: {
-    width: 22,
-    height: 22,
+    width: 20,
+    height: 20,
     alignItems: "center",
     justifyContent: "center",
   },
   dangerButtonText: {
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: "700",
-    lineHeight: 20,
+    lineHeight: 18,
     includeFontPadding: false,
     textAlignVertical: "center",
   },
   appVersion: {
-    fontSize: 11,
+    fontSize: 10.5,
     textAlign: "center",
-    marginTop: 22,
-    marginBottom: 10,
+    marginTop: 18,
+    marginBottom: 8,
   },
 
   /* Bottom Navigation */
@@ -5793,60 +5961,60 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   loginCard: {
-    borderRadius: 28,
+    borderRadius: 20,
     borderWidth: 1,
-    padding: 24,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 4,
+    padding: 18,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.07,
+    shadowRadius: 10,
+    elevation: 3,
   },
   brandBlock: {
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 14,
   },
   brandTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: "900",
-    letterSpacing: -0.5,
-    marginTop: 10,
+    letterSpacing: -0.4,
+    marginTop: 8,
   },
   brandSubtitle: {
-    fontSize: 12,
-    marginTop: 4,
+    fontSize: 11.5,
+    marginTop: 3,
     textAlign: "center",
   },
   roleSwitch: {
     flexDirection: "row",
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1,
     padding: 3,
-    marginBottom: 20,
+    marginBottom: 14,
   },
   roleSwitchButton: {
     flex: 1,
     flexDirection: "row",
     gap: 6,
-    paddingVertical: 10,
-    borderRadius: 13,
+    paddingVertical: 8,
+    borderRadius: 11,
     alignItems: "center",
     justifyContent: "center",
   },
   roleSwitchButtonActive: {
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
     elevation: 2,
   },
   roleSwitchText: {
-    fontSize: 13,
+    fontSize: 12.5,
   },
   formStack: {
-    gap: 16,
+    gap: 12,
   },
   field: {
-    gap: 6,
+    gap: 5,
   },
   fieldHeader: {
     flexDirection: "row",
@@ -5854,7 +6022,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   fieldLabel: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: "700",
   },
   inputWrapper: {
@@ -5862,11 +6030,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   input: {
-    height: 52,
-    borderRadius: 14,
+    height: 46,
+    borderRadius: 12,
     borderWidth: 1.2,
-    paddingHorizontal: 16,
-    fontSize: 14,
+    paddingHorizontal: 14,
+    fontSize: 13.5,
   },
   inputPrefixIcon: {
     position: "absolute",
@@ -5878,18 +6046,18 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   inputWithPrefix: {
-    paddingLeft: 42,
+    paddingLeft: 40,
   },
   passwordWrap: {
     position: "relative",
     justifyContent: "center",
   },
   passwordInput: {
-    paddingRight: 48,
+    paddingRight: 44,
   },
   passwordToggle: {
     position: "absolute",
-    right: 14,
+    right: 12,
     height: "100%",
     justifyContent: "center",
     alignItems: "center",
@@ -5900,25 +6068,25 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   forgotText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: "600",
   },
   primaryButton: {
-    minHeight: 50,
-    borderRadius: 16,
+    minHeight: 46,
+    borderRadius: 14,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 20,
+    paddingHorizontal: 18,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
     elevation: 3,
   },
   primaryButtonText: {
     color: "#ffffff",
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "800",
     letterSpacing: 0.2,
   },
@@ -5934,37 +6102,37 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   buttonIconWrap: {
-    width: 22,
-    height: 22,
+    width: 20,
+    height: 20,
     alignItems: "center",
     justifyContent: "center",
   },
   secondaryButton: {
-    minHeight: 48,
-    borderRadius: 14,
+    minHeight: 44,
+    borderRadius: 12,
     borderWidth: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
   },
   secondaryButtonText: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: "700",
   },
   ghostButton: {
-    minHeight: 40,
+    minHeight: 38,
     justifyContent: "center",
     alignItems: "center",
   },
   ghostButtonText: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: "700",
   },
   loginFooter: {
     alignItems: "center",
-    paddingTop: 20,
-    gap: 8,
+    paddingTop: 14,
+    gap: 6,
   },
   securityRow: {
     flexDirection: "row",
@@ -5972,13 +6140,13 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   secureNote: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: "500",
   },
   universityAffiliation: {
-    fontSize: 11,
+    fontSize: 10.5,
     textAlign: "center",
-    lineHeight: 15,
+    lineHeight: 14,
     maxWidth: 320,
     opacity: 0.75,
   },
@@ -5988,7 +6156,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 24,
+    padding: 20,
   },
   modalBackdrop: {
     position: "absolute",
@@ -6000,65 +6168,65 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     width: "100%",
-    maxWidth: 340,
-    borderRadius: 24,
+    maxWidth: 320,
+    borderRadius: 20,
     borderWidth: 1,
-    padding: 24,
+    padding: 20,
     alignItems: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.18,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.16,
+    shadowRadius: 14,
+    elevation: 7,
   },
   modalIconWrap: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 14,
+    marginBottom: 10,
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "800",
     textAlign: "center",
-    marginBottom: 8,
+    marginBottom: 6,
     letterSpacing: -0.2,
   },
   modalMessage: {
-    fontSize: 13,
-    lineHeight: 20,
+    fontSize: 12.5,
+    lineHeight: 18,
     textAlign: "center",
-    marginBottom: 22,
+    marginBottom: 16,
   },
   modalActions: {
     flexDirection: "row",
-    gap: 12,
+    gap: 10,
     width: "100%",
   },
   modalCancelBtn: {
     flex: 1,
-    height: 46,
-    borderRadius: 14,
+    height: 42,
+    borderRadius: 12,
     borderWidth: 1,
     justifyContent: "center",
     alignItems: "center",
   },
   modalCancelText: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: "600",
   },
   modalConfirmBtn: {
     flex: 1,
-    height: 46,
-    borderRadius: 14,
+    height: 42,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
   },
   modalConfirmText: {
     color: "#ffffff",
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: "700",
   },
 });
