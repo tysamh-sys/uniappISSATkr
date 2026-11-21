@@ -58,3 +58,4 @@ Thumbs.db
 original_seed_backup_*.txt
 *.orig.*
 *.backup*
+*.sql

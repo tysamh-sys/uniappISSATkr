@@ -486,3 +486,175 @@ export async function studentStats(studentId: string): Promise<StudentStats> {
 export async function listActivity(forUserId?: string, limit = 20): Promise<Activity[]> {
   return client.get<Activity[]>("/activity", { forUserId, limit });
 }
+
+// ---------------------------------------------------------------------------------------------
+// Flexible University Data Import System (Admin Only)
+// ---------------------------------------------------------------------------------------------
+
+export type ImportEntityType =
+  | "STUDENT"
+  | "TEACHER"
+  | "CLASS"
+  | "SUBJECT"
+  | "ROOM"
+  | "TIMETABLE";
+
+export interface SheetAnalysis {
+  sheetName: string;
+  rowCount: number;
+  headerRowIndex: number;
+  headers: string[];
+  sampleRows: Record<string, any>[];
+  suggestedEntity: ImportEntityType | null;
+  confidence: number;
+  suggestedMappings: Record<string, string>;
+}
+
+export interface FileAnalysisResponse {
+  fileToken?: string;
+  fileName: string;
+  fileSize: number;
+  totalSheets: number;
+  sheets: SheetAnalysis[];
+}
+
+export interface SheetMappingConfig {
+  sheetName: string;
+  entityType: ImportEntityType;
+  columnMappings: Record<string, string>;
+}
+
+export interface EntityPreviewItem {
+  line: number;
+  status: "VALID" | "WARNING" | "ERROR" | "DUPLICATE";
+  raw: Record<string, any>;
+  parsed: Record<string, any>;
+  errors: string[];
+  warnings: string[];
+  diff?: {
+    existing: Record<string, any>;
+    incoming: Record<string, any>;
+  };
+}
+
+export interface SheetValidationResult {
+  sheetName: string;
+  entityType: ImportEntityType;
+  totalRows: number;
+  validCount: number;
+  warningCount: number;
+  errorCount: number;
+  duplicateCount: number;
+  missingRequiredCount: number;
+  previewRows: EntityPreviewItem[];
+  fieldErrors: { line: number; sheetName: string; message: string; severity: "error" | "warning" }[];
+}
+
+export interface ImportPreviewResponse {
+  canProceed: boolean;
+  sheets: SheetValidationResult[];
+  overallSummary: {
+    totalRecords: number;
+    validRecords: number;
+    warningRecords: number;
+    errorRecords: number;
+    duplicateRecords: number;
+    entitiesDetected: ImportEntityType[];
+  };
+  dependenciesSummary: {
+    classesNeeded: string[];
+    classesFound: string[];
+    teachersNeeded: string[];
+    teachersFound: string[];
+    subjectsNeeded: string[];
+    subjectsFound: string[];
+    roomsNeeded: string[];
+    roomsFound: string[];
+    unresolvedDependencies: string[];
+  };
+}
+
+export interface ImportExecutionOptions {
+  strategy: "SKIP" | "UPDATE";
+  generateUserAccounts: boolean;
+  defaultPassword?: string;
+  timetableVersionName?: string;
+}
+
+export interface EntityImportReport {
+  entityType: ImportEntityType;
+  inserted: number;
+  updated: number;
+  skipped: number;
+  failed: number;
+  errors: string[];
+}
+
+export interface ImportExecutionReport {
+  id: string;
+  fileName: string;
+  importedAt: string;
+  adminId: string;
+  adminName: string;
+  status: "SUCCESS" | "PARTIAL" | "FAILED";
+  totalProcessed: number;
+  totalInserted: number;
+  totalUpdated: number;
+  totalSkipped: number;
+  totalFailed: number;
+  strategyUsed: "SKIP" | "UPDATE";
+  entityReports: EntityImportReport[];
+  criticalErrors?: string[];
+}
+
+export interface ImportHistoryItem {
+  id: string;
+  fileName: string;
+  importedAt: string;
+  adminId: string;
+  adminName: string;
+  status: "SUCCESS" | "PARTIAL" | "FAILED";
+  entityTypes: ImportEntityType[];
+  totalRecords: number;
+  insertedCount: number;
+  updatedCount: number;
+  skippedCount: number;
+  errorCount: number;
+  summary: ImportExecutionReport;
+}
+
+export async function analyzeImportFile(file: File): Promise<FileAnalysisResponse> {
+  const formData = new FormData();
+  formData.append("file", file);
+  return client.postFormData<FileAnalysisResponse>("/admin/import/analyze", formData);
+}
+
+export async function previewImportData(payload: {
+  fileToken?: string;
+  sheets: SheetMappingConfig[];
+}): Promise<ImportPreviewResponse> {
+  return client.post<ImportPreviewResponse>("/admin/import/preview", payload);
+}
+
+export async function executeImportData(payload: {
+  fileToken?: string;
+  sheets: SheetMappingConfig[];
+  options?: Partial<ImportExecutionOptions>;
+}): Promise<ImportExecutionReport> {
+  const report = await client.post<ImportExecutionReport>("/admin/import/execute", payload);
+  invalidateQueries();
+  return report;
+}
+
+export async function listImportHistory(limit = 20): Promise<ImportHistoryItem[]> {
+  return client.get<ImportHistoryItem[]>("/admin/import/history", { limit });
+}
+
+export async function getImportHistoryDetail(id: string): Promise<ImportExecutionReport> {
+  return client.get<ImportExecutionReport>(`/admin/import/history/${id}`);
+}
+
+export function getSampleDatasetDownloadUrl(): string {
+  return "/api/admin/import/sample-dataset";
+}
+

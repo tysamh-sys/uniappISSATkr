@@ -12,6 +12,7 @@ export const ADMIN_NAV: NavItem[] = [
   { path: "/admin/subjects", label: "Matières", icon: "book", match: ["/admin/subjects"] },
   { path: "/admin/absences", label: "Absences", icon: "calendar", match: ["/admin/absences"] },
   { path: "/admin/certificates", label: "Certificats", icon: "file", match: ["/admin/certificates"], badge: "pendingCertificates" },
+  { path: "/admin/import", label: "Importation des données", icon: "upload", match: ["/admin/import"] },
 ];
 
 export const TEACHER_NAV: NavItem[] = [

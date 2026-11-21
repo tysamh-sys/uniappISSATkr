@@ -50,6 +50,17 @@ export default function AdminDashboard() {
   return (
     <>
       <PageHeader title="Tableau de bord" subtitle="Vue d'ensemble de l'activité universitaire" />
+      <div className="card mb" style={{ background: "linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)", color: "white", borderRadius: 12, padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+        <div>
+          <span style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, opacity: 0.85, display: "block", marginBottom: 4 }}>SYSTÈME D'IMPORTATION</span>
+          <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: "white" }}>Importation des données universitaires</h2>
+          <p style={{ margin: "4px 0 0 0", opacity: 0.9, fontSize: 13, maxWidth: 650 }}>Importez directement vos fichiers Excel (.xlsx, .xls) ou CSV pour configurer ou mettre à jour les classes, étudiants, enseignants, matières et emplois du temps.</p>
+        </div>
+        <button type="button" className="btn" style={{ backgroundColor: "white", color: "#1e3a8a", fontWeight: 700, padding: "10px 20px", borderRadius: 8, display: "inline-flex", alignItems: "center", gap: 8, border: "none", cursor: "pointer", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)" }} onClick={() => navigate("/admin/import")}>
+          <Icon name="upload" size={18} />
+          Accéder à l'importation
+        </button>
+      </div>
       <div className="stats stats-4">
         <StatCard label="Étudiants" value={s ? formatNumber(s.studentCount) : "…"} detail="inscrits" icon="students" tone="indigo" />
         <StatCard label="Enseignants" value={s ? `${s.activeTeacherCount}` : "…"} detail={s ? `${s.teacherCount - s.activeTeacherCount} désactivé${s.teacherCount - s.activeTeacherCount > 1 ? "s" : ""}` : ""} icon="teacher" tone="blue" />

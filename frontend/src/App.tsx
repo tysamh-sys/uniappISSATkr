@@ -14,6 +14,7 @@ import TeachersPage, { TeacherFormPage } from "./pages/admin/Teachers";
 import SubjectsPage from "./pages/admin/Subjects";
 import AbsencesPage, { NewAbsencePage } from "./pages/admin/Absences";
 import CertificatesPage, { NewCertificatePage } from "./pages/admin/Certificates";
+import DataImportPage from "./pages/admin/DataImport";
 import { RollCallPage, TeacherAbsencesPage, TeacherDashboard, TeacherSessionsPage } from "./pages/teacher/TeacherPages";
 import { StudentAbsencesPage, StudentCertificatesPage, StudentDashboard, StudentJustifyPage } from "./pages/student/StudentPages";
 
@@ -48,6 +49,7 @@ function resolve(session: AuthSession, path: string): { title: string; node: Rea
     if ((m = matchRoute("/admin/absences/:id", clean))) return { title: "Absences", node: <AbsencesPage key="list" path={path} detailId={m.id} /> };
     if (clean === "/admin/certificates") return { title: "Certificats", node: <CertificatesPage /> };
     if (clean === "/admin/certificates/new") return { title: "Certificats", node: <NewCertificatePage /> };
+    if (clean === "/admin/import") return { title: "Importation des données", node: <DataImportPage /> };
   }
 
   if (role === "teacher") {

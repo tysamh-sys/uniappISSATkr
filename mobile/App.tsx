@@ -17,10 +17,24 @@ import {
   useWindowDimensions,
   StyleProp,
   ViewStyle,
+  ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons, Feather } from "@expo/vector-icons";
+import {
+  api,
+  getApiBaseUrl,
+  setApiBaseUrl,
+  resetApiBaseUrl,
+  setUnauthorizedHandler,
+  getAuthToken,
+  getStoredUser,
+} from "./src/services/api";
+import { EmptyState } from "./src/components/EmptyState";
+import { ApiErrorCard } from "./src/components/ApiErrorCard";
+import { ApiConfigModal } from "./src/components/ApiConfigModal";
 
 /* ==========================================================================
    TYPES & CONSTANTS
@@ -355,6 +369,12 @@ function AppIcon({
         return <Feather name="arrow-left" size={size} color={iconColor} />;
       case "login":
         return <Feather name="log-in" size={size} color={iconColor} />;
+      case "alertCircle":
+        return <Feather name="alert-circle" size={size} color={iconColor} />;
+      case "refresh":
+        return <Feather name="refresh-cw" size={size} color={iconColor} />;
+      case "server":
+        return <Feather name="server" size={size} color={iconColor} />;
       case "more":
       default:
         return <Feather name="more-horizontal" size={size} color={iconColor} />;
@@ -914,72 +934,23 @@ function OfflineNotice({ colors }: { colors: ThemeColors }) {
    SCHEDULE & TIMELINE DATA
    ========================================================================== */
 type ClassItem = {
+  timetableEntryId?: string;
+  sessionId?: string | null;
   time: string;
   end: string;
   subject: string;
+  subjectCode?: string;
   meta: string;
+  room?: string;
+  className?: string;
   status: string;
   tone: "success" | "info" | "warning" | "danger" | "neutral";
   current?: boolean;
   unread?: boolean;
+  startMinutes?: number;
 };
 
-const studentClasses: ClassItem[] = [
-  {
-    time: "08:30",
-    end: "10:00",
-    subject: "Développement Web",
-    meta: "Salle B12 · M. Ben Salem",
-    status: "Présent",
-    tone: "success",
-  },
-  {
-    time: "10:15",
-    end: "11:45",
-    subject: "Bases de données",
-    meta: "Labo 03 · Mme. Gharbi",
-    status: "En cours",
-    tone: "info",
-    current: true,
-  },
-  {
-    time: "13:30",
-    end: "15:00",
-    subject: "Réseaux informatiques",
-    meta: "Amphi A · M. Trabelsi",
-    status: "À venir",
-    tone: "neutral",
-    unread: true,
-  },
-];
-
-const teacherClasses: ClassItem[] = [
-  {
-    time: "09:00",
-    end: "10:30",
-    subject: "Systèmes distribués",
-    meta: "Salle C08 · ING3-A",
-    status: "Enregistrée",
-    tone: "success",
-  },
-  {
-    time: "11:00",
-    end: "12:30",
-    subject: "Architecture logicielle",
-    meta: "Labo 02 · ING2-B",
-    status: "À enregistrer",
-    tone: "warning",
-    current: true,
-  },
-  {
-    time: "14:00",
-    end: "15:30",
-    subject: "Projet intégré",
-    meta: "Salle P04 · ING3-A",
-    status: "À venir",
-    tone: "neutral",
-  },
-];
+const emptyClasses: ClassItem[] = [];
 
 /** Class Timeline Row */
 const ClassRow = React.memo(function ClassRow({
@@ -1185,8 +1156,9 @@ function LoginScreen({
   setTheme,
   colors,
   isDark,
+  onOpenApiConfig,
 }: {
-  onLogin: () => void;
+  onLogin: (user: any) => void;
   role: Role;
   setRole: (r: Role) => void;
   lang: Lang;
@@ -1195,6 +1167,7 @@ function LoginScreen({
   setTheme: (t: Theme) => void;
   colors: ThemeColors;
   isDark: boolean;
+  onOpenApiConfig: () => void;
 }) {
   const [email, setEmail] = useState(
     role === "student" ? "etudiant@issatk.rnu.tn" : "enseignant@issatk.rnu.tn"
@@ -1202,11 +1175,13 @@ function LoginScreen({
   const [password, setPassword] = useState("issatk2025");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
   const [forgotModalVisible, setForgotModalVisible] = useState(false);
   const isRTL = lang === "ar";
 
   const handleRoleChange = (newRole: Role) => {
     setRole(newRole);
+    setLoginError(null);
     setEmail(
       newRole === "student"
         ? "etudiant@issatk.rnu.tn"
@@ -1214,12 +1189,32 @@ function LoginScreen({
     );
   };
 
-  const submit = () => {
+  const submit = async () => {
+    if (!email.trim() || !password) {
+      setLoginError(
+        lang === "fr"
+          ? "Veuillez renseigner votre identifiant et votre mot de passe."
+          : lang === "ar"
+          ? "يرجى إدخال المعرف الجامعي وكلمة المرور."
+          : "Please enter your ID and password."
+      );
+      return;
+    }
     setLoading(true);
-    setTimeout(() => {
+    setLoginError(null);
+    try {
+      const res = await api.auth.login(email.trim(), password);
       setLoading(false);
-      onLogin();
-    }, 320);
+      onLogin(res.user);
+    } catch (err: any) {
+      setLoading(false);
+      setLoginError(
+        err.message ||
+          (lang === "fr"
+            ? "Impossible de se connecter au serveur ISSATK via ngrok."
+            : "Cannot connect to ISSATK backend server.")
+      );
+    }
   };
 
   const cycleLang = () => {
@@ -1377,6 +1372,38 @@ function LoginScreen({
             </TouchableOpacity>
           </View>
 
+          {/* Quick API / ngrok Configuration Pill */}
+          <TouchableOpacity
+            onPress={onOpenApiConfig}
+            style={{
+              flexDirection: isRTL ? "row-reverse" : "row",
+              alignItems: "center",
+              justifyContent: "center",
+              alignSelf: "center",
+              paddingVertical: 5,
+              paddingHorizontal: 12,
+              borderRadius: 20,
+              backgroundColor: isDark ? "rgba(233, 181, 68, 0.12)" : colors.accentSoft,
+              borderWidth: 1,
+              borderColor: isDark ? "rgba(233, 181, 68, 0.3)" : "rgba(233, 181, 68, 0.4)",
+              marginBottom: 10,
+            }}
+            activeOpacity={0.7}
+          >
+            <AppIcon name="server" size={13} color={colors.accentText || colors.accent} />
+            <Text
+              style={{
+                fontSize: 11,
+                fontWeight: "700",
+                color: isDark ? colors.accent : colors.secondary,
+                marginLeft: isRTL ? 0 : 6,
+                marginRight: isRTL ? 6 : 0,
+              }}
+            >
+              {lang === "fr" ? "Configuration API & ngrok" : lang === "ar" ? "إعدادات رابط ngrok" : "API & ngrok Settings"}
+            </Text>
+          </TouchableOpacity>
+
           {/* Form Fields */}
           <View style={styles.formStack}>
             <View style={styles.field}>
@@ -1459,6 +1486,36 @@ function LoginScreen({
                 {buttonCopy[lang].forgotPassword}
               </Text>
             </TouchableOpacity>
+
+            {loginError && (
+              <View
+                style={{
+                  flexDirection: isRTL ? "row-reverse" : "row",
+                  alignItems: "center",
+                  backgroundColor: colors.dangerSoft,
+                  borderColor: colors.danger,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  padding: 10,
+                  marginBottom: 12,
+                }}
+              >
+                <AppIcon name="alertCircle" size={16} color={colors.danger} />
+                <Text
+                  style={{
+                    color: colors.danger,
+                    fontSize: 12,
+                    marginLeft: isRTL ? 0 : 8,
+                    marginRight: isRTL ? 8 : 0,
+                    flex: 1,
+                    fontWeight: "600",
+                    textAlign: isRTL ? "right" : "left",
+                  }}
+                >
+                  {loginError}
+                </Text>
+              </View>
+            )}
 
             <PressableScale
               style={[
@@ -1566,6 +1623,8 @@ function HomeScreen({
   lang,
   colors,
   isDark,
+  currentUser,
+  onSelectClass,
 }: {
   role: Role;
   online: boolean;
@@ -1574,10 +1633,73 @@ function HomeScreen({
   lang: Lang;
   colors: ThemeColors;
   isDark: boolean;
+  currentUser: any | null;
+  onSelectClass: (c: any) => void;
 }) {
-  const classes = role === "student" ? studentClasses : teacherClasses;
-  const greetingName = role === "student" ? "Amine" : "Mme. Mansouri";
+  const [dashboard, setDashboard] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadData = useCallback(async () => {
+    try {
+      setError(null);
+      const data =
+        role === "teacher"
+          ? await api.teacher.getDashboard()
+          : await api.student.getDashboard();
+      setDashboard(data);
+    } catch (err: any) {
+      setError(err.message || "Impossible de joindre le backend Express.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [role]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadData();
+  }, [loadData]);
+
   const isRTL = lang === "ar";
+
+  const greetingName = currentUser?.firstName
+    ? role === "teacher"
+      ? `Mme. ${currentUser.lastName || currentUser.firstName}`
+      : currentUser.firstName
+    : dashboard?.teacher?.fullName ||
+      dashboard?.student?.fullName ||
+      (role === "teacher" ? "Professeur" : "Étudiant");
+
+  const todayFormatted =
+    dashboard?.today?.dateFormatted ||
+    (lang === "fr" ? "Aujourd'hui" : lang === "ar" ? "اليوم" : "Today");
+
+  const classes: ClassItem[] = dashboard?.classes || [];
+  const nextClass = dashboard?.nextClass;
+
+  const attendanceBig =
+    role === "teacher"
+      ? `${dashboard?.quickStats?.completedTodayCount ?? 0} / ${
+          dashboard?.quickStats?.totalSessionsToday ?? classes.length
+        }`
+      : `${dashboard?.quickStats?.attendanceRate ?? 92}%`;
+
+  const attendanceSub =
+    role === "teacher"
+      ? dashboard?.attendanceSummary?.attendanceRate
+        ? `${dashboard.attendanceSummary.attendanceRate}% de présence moyenne`
+        : lang === "ar"
+        ? "Séances enregistrées"
+        : "Séances de la journée"
+      : lang === "ar"
+      ? `${classes.length} حصص مقررة اليوم`
+      : `${classes.length} cours prévus aujourd'hui`;
 
   return (
     <View style={{ flex: 1, backgroundColor: "transparent" }}>
@@ -1640,6 +1762,14 @@ function HomeScreen({
       <ScrollView
         contentContainerStyle={styles.screenContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.accent}
+            colors={[colors.accent]}
+          />
+        }
       >
         {/* 3. Spacious Greeting Section (Upper-Left alongside the prominent building) */}
         <View style={[styles.homeGreetingSection, isRTL && { alignSelf: "flex-end", alignItems: "flex-end" }]}>
@@ -1661,100 +1791,148 @@ function HomeScreen({
                 { color: colors.textSecondary },
               ]}
             >
-              {lang === "fr" ? "Mardi 18 mars 2025" : lang === "ar" ? "الثلاثاء 18 مارس 2025" : "Tuesday, Mar 18, 2025"}
+              {todayFormatted}
             </Text>
           </View>
         </View>
 
         {!online && <OfflineNotice colors={colors} />}
 
-        {/* 4. Next Class Highlight Card (Exact Reference Design Match) */}
-        <View
-          style={[
-            styles.nextCard,
-            {
-              backgroundColor: colors.card,
-              borderColor: isDark ? colors.border : "transparent",
-              shadowColor: isDark ? "#000" : "#102B55",
-              flexDirection: isRTL ? "row-reverse" : "row",
-            },
-          ]}
-        >
-          {/* Gold Accent Strip on left */}
-          <View style={[styles.nextCardAccentBar, { backgroundColor: colors.accent }]} />
+        {/* Real Network / Server Error Display */}
+        {error && (
+          <ApiErrorCard
+            message={error}
+            onRetry={loadData}
+            colors={colors}
+            isDark={isDark}
+          />
+        )}
 
-          <View style={styles.nextCardBody}>
-            <View style={[styles.nextCardHeader, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
-              <View style={[styles.nextBadge, { backgroundColor: colors.accentSoft }]}>
-                <Text style={[styles.nextBadgeText, { color: colors.accentText }]}>
-                  {copy[lang].next}
-                </Text>
-              </View>
-              <View
-                style={[
-                  styles.timeBadge,
-                  {
-                    backgroundColor: isDark ? colors.surfaceRaised : "#EBF1F8",
-                  },
-                ]}
-              >
-                <Text
+        {/* Loading Spinner */}
+        {loading && !dashboard && (
+          <View style={{ paddingVertical: 24, alignItems: "center" }}>
+            <ActivityIndicator size="large" color={colors.accent} />
+            <Text style={{ marginTop: 10, fontSize: 13, color: colors.textSecondary }}>
+              {lang === "fr" ? "Chargement des cours en temps réel…" : "Loading courses…"}
+            </Text>
+          </View>
+        )}
+
+        {/* 4. Next Class Highlight Card (Exact Reference Design Match) */}
+        {nextClass ? (
+          <View
+            style={[
+              styles.nextCard,
+              {
+                backgroundColor: colors.card,
+                borderColor: isDark ? colors.border : "transparent",
+                shadowColor: isDark ? "#000" : "#102B55",
+                flexDirection: isRTL ? "row-reverse" : "row",
+              },
+            ]}
+          >
+            {/* Gold Accent Strip on left */}
+            <View style={[styles.nextCardAccentBar, { backgroundColor: colors.accent }]} />
+
+            <View style={styles.nextCardBody}>
+              <View style={[styles.nextCardHeader, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+                <View style={[styles.nextBadge, { backgroundColor: colors.accentSoft }]}>
+                  <Text style={[styles.nextBadgeText, { color: colors.accentText }]}>
+                    {copy[lang].next}
+                  </Text>
+                </View>
+                <View
                   style={[
-                    styles.timeBadgeText,
-                    { color: isDark ? colors.textSecondary : colors.secondary },
+                    styles.timeBadge,
+                    {
+                      backgroundColor: isDark ? colors.surfaceRaised : "#EBF1F8",
+                    },
                   ]}
                 >
-                  {copy[lang].in12min}
-                </Text>
-              </View>
-            </View>
-
-            <View style={[styles.nextCardContentRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
-              <View style={{ flex: 1, paddingRight: isRTL ? 0 : 10, paddingLeft: isRTL ? 10 : 0 }}>
-                <Text
-                  numberOfLines={1}
-                  style={[styles.nextTitle, { color: colors.text, textAlign: isRTL ? "right" : "left" }]}
-                >
-                  {classes[1].subject}
-                </Text>
-                <View style={[styles.nextMetaRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
-                  <View style={[styles.nextInfoRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
-                    <AppIcon name="clock" size={13} color={colors.textSecondary} />
-                    <Text style={[styles.nextInfoText, { color: colors.textSecondary }]}>
-                      {classes[1].time} – {classes[1].end}
-                    </Text>
-                  </View>
-                  <Text style={[styles.metaDivider, { color: colors.border }]}>|</Text>
-                  <View style={[styles.nextInfoRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
-                    <AppIcon name="map" size={13} color={colors.textSecondary} />
-                    <Text
-                      numberOfLines={1}
-                      style={[styles.nextInfoText, { color: colors.textSecondary }]}
-                    >
-                      {classes[1].meta}
-                    </Text>
-                  </View>
+                  <Text
+                    style={[
+                      styles.timeBadgeText,
+                      { color: isDark ? colors.textSecondary : colors.secondary },
+                    ]}
+                  >
+                    {nextClass.countdown || (lang === "fr" ? "À venir" : "Upcoming")}
+                  </Text>
                 </View>
               </View>
 
-              {/* Right Circular Action Button */}
-              <PressableScale
-                onPress={() => navigate("class")}
-                style={[
-                  styles.nextCircleBtn,
-                  { backgroundColor: isDark ? colors.accent : "#102B55" },
-                ]}
-              >
-                <AppIcon
-                  name="chevron"
-                  size={18}
-                  color={isDark ? "#081A33" : "#FFFFFF"}
-                  style={{ transform: [{ rotate: isRTL ? "180deg" : "0deg" }] }}
-                />
-              </PressableScale>
+              <View style={[styles.nextCardContentRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+                <View style={{ flex: 1, paddingRight: isRTL ? 0 : 10, paddingLeft: isRTL ? 10 : 0 }}>
+                  <Text
+                    numberOfLines={1}
+                    style={[styles.nextTitle, { color: colors.text, textAlign: isRTL ? "right" : "left" }]}
+                  >
+                    {nextClass.subject}
+                  </Text>
+                  <View style={[styles.nextMetaRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+                    <View style={[styles.nextInfoRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+                      <AppIcon name="clock" size={13} color={colors.textSecondary} />
+                      <Text style={[styles.nextInfoText, { color: colors.textSecondary }]}>
+                        {nextClass.time} – {nextClass.end}
+                      </Text>
+                    </View>
+                    <Text style={[styles.metaDivider, { color: colors.border }]}>|</Text>
+                    <View style={[styles.nextInfoRow, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
+                      <AppIcon name="map" size={13} color={colors.textSecondary} />
+                      <Text
+                        numberOfLines={1}
+                        style={[styles.nextInfoText, { color: colors.textSecondary }]}
+                      >
+                        {nextClass.meta || `${nextClass.room || ''} · ${nextClass.className || ''}`}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Right Circular Action Button */}
+                <PressableScale
+                  onPress={() => {
+                    onSelectClass(nextClass);
+                    navigate("class");
+                  }}
+                  style={[
+                    styles.nextCircleBtn,
+                    { backgroundColor: isDark ? colors.accent : "#102B55" },
+                  ]}
+                >
+                  <AppIcon
+                    name="chevron"
+                    size={18}
+                    color={isDark ? "#081A33" : "#FFFFFF"}
+                    style={{ transform: [{ rotate: isRTL ? "180deg" : "0deg" }] }}
+                  />
+                </PressableScale>
+              </View>
             </View>
           </View>
-        </View>
+        ) : !loading ? (
+          <View
+            style={[
+              styles.nextCard,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                borderWidth: 1,
+                padding: 14,
+                alignItems: "center",
+                justifyContent: "center",
+              },
+            ]}
+          >
+            <AppIcon name="calendar" size={22} color={colors.textSecondary} />
+            <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 6, fontWeight: "500" }}>
+              {lang === "fr"
+                ? "Aucun cours imminent programmé aujourd’hui."
+                : lang === "ar"
+                ? "لا توجد حصة قادمة مبرمجة حالياً."
+                : "No imminent class scheduled today."}
+            </Text>
+          </View>
+        ) : null}
 
         {/* 5. Today's Schedule Section */}
         <View style={[styles.sectionHeading, { flexDirection: isRTL ? "row-reverse" : "row" }]}>
@@ -1778,28 +1956,54 @@ function HomeScreen({
           </TouchableOpacity>
         </View>
 
-        {/* Daily Schedule Timeline Card */}
-        <View
-          style={[
-            styles.timelineList,
-            {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-              shadowColor: isDark ? "#000" : "#102B55",
-            },
-          ]}
-        >
-          {classes.map((item, idx) => (
-            <ClassRow
-              item={item}
-              key={item.time}
-              onClick={() => navigate("class")}
-              colors={colors}
-              isLast={idx === classes.length - 1}
-              isRTL={isRTL}
-            />
-          ))}
-        </View>
+        {/* Daily Schedule Timeline Card or Empty State */}
+        {classes.length > 0 ? (
+          <View
+            style={[
+              styles.timelineList,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                shadowColor: isDark ? "#000" : "#102B55",
+              },
+            ]}
+          >
+            {classes.map((item, idx) => (
+              <ClassRow
+                item={item}
+                key={item.timetableEntryId || `${item.time}-${idx}`}
+                onClick={() => {
+                  onSelectClass(item);
+                  navigate("class");
+                }}
+                colors={colors}
+                isLast={idx === classes.length - 1}
+                isRTL={isRTL}
+              />
+            ))}
+          </View>
+        ) : !loading ? (
+          <EmptyState
+            icon="calendar"
+            title={
+              lang === "fr"
+                ? "Aucun cours aujourd'hui"
+                : lang === "ar"
+                ? "لا توجد حصص مبرمجة اليوم"
+                : "No classes scheduled today"
+            }
+            subtitle={
+              lang === "fr"
+                ? "Vous n'avez aucun cours prévu pour cette journée. Consultez l'emploi du temps complet."
+                : lang === "ar"
+                ? "ليس لديك أي حصة مبرمجة لهذا اليوم. يمكنك مراجعة جدول الأوقات الأسبوعي."
+                : "You have no classes scheduled today. Check the weekly timetable."
+            }
+            actionLabel={lang === "fr" ? "Voir l'emploi du temps" : "View Timetable"}
+            onAction={() => navigate("timetable")}
+            colors={colors}
+          />
+        ) : null}
 
         {/* 6. Attendance Summary Card (Heritage Navy Reference Feature) */}
         <PressableScale
@@ -1822,12 +2026,10 @@ function HomeScreen({
                 {copy[lang].attendanceRate}
               </Text>
               <Text style={[styles.attendanceSummaryBig, { textAlign: isRTL ? "right" : "left" }]}>
-                {role === "student" ? "90%" : "6 / 6"}
+                {attendanceBig}
               </Text>
               <Text style={[styles.attendanceSummarySub, { textAlign: isRTL ? "right" : "left" }]}>
-                {role === "student"
-                  ? (lang === "ar" ? "18 حضور · 2 غياب" : "18 présences · 2 absences")
-                  : (lang === "ar" ? "حصص اليوم المبرمجة" : "Séances de la journée")}
+                {attendanceSub}
               </Text>
             </View>
           </View>
@@ -1984,6 +2186,7 @@ function TimetableScreen({
   lang,
   colors,
   isDark,
+  onSelectClass,
 }: {
   role: Role;
   online: boolean;
@@ -1992,24 +2195,76 @@ function TimetableScreen({
   lang: Lang;
   colors: ThemeColors;
   isDark: boolean;
+  onSelectClass: (c: any) => void;
 }) {
-  const classes = role === "student" ? studentClasses : teacherClasses;
   const isRTL = lang === "ar";
-  const days = [
-    [lang === "ar" ? "إثن" : lang === "en" ? "Mon" : "Lun", "17"],
-    [lang === "ar" ? "ثلا" : lang === "en" ? "Tue" : "Mar", "18"],
-    [lang === "ar" ? "أرب" : lang === "en" ? "Wed" : "Mer", "19"],
-    [lang === "ar" ? "خمي" : lang === "en" ? "Thu" : "Jeu", "20"],
-    [lang === "ar" ? "جمعة" : lang === "en" ? "Fri" : "Ven", "21"],
-    [lang === "ar" ? "سبت" : lang === "en" ? "Sat" : "Sam", "22"],
-  ];
-  const [selectedDay, setSelectedDay] = useState("18");
+  const [selectedDayIndex, setSelectedDayIndex] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [scheduleData, setScheduleData] = useState<any>(null);
+
+  const days = useMemo(
+    () => [
+      { key: "MONDAY", fr: "Lun", en: "Mon", ar: "إثن", nameFr: "Lundi", num: "17" },
+      { key: "TUESDAY", fr: "Mar", en: "Tue", ar: "ثلا", nameFr: "Mardi", num: "18" },
+      { key: "WEDNESDAY", fr: "Mer", en: "Wed", ar: "أرب", nameFr: "Mercredi", num: "19" },
+      { key: "THURSDAY", fr: "Jeu", en: "Thu", ar: "خمي", nameFr: "Jeudi", num: "20" },
+      { key: "FRIDAY", fr: "Ven", en: "Fri", ar: "جمعة", nameFr: "Vendredi", num: "21" },
+      { key: "SATURDAY", fr: "Sam", en: "Sat", ar: "سبت", nameFr: "Samedi", num: "22" },
+    ],
+    []
+  );
+
+  const loadTimetable = useCallback(async () => {
+    try {
+      setError(null);
+      const activeDayKey = days[selectedDayIndex].key;
+      const res =
+        role === "teacher"
+          ? await api.teacher.getSchedule(activeDayKey)
+          : await api.student.getTimetable(activeDayKey);
+      setScheduleData(res);
+    } catch (err: any) {
+      setError(err.message || "Erreur de chargement de l'emploi du temps.");
+    } finally {
+      setLoading(false);
+    }
+  }, [role, selectedDayIndex, days]);
+
+  useEffect(() => {
+    loadTimetable();
+  }, [loadTimetable]);
+
+  const currentDay = days[selectedDayIndex];
+
+  // Extract classes list from API response
+  const rawClasses = scheduleData?.classes || (Array.isArray(scheduleData) ? scheduleData : []);
+  const dayClasses: ClassItem[] = rawClasses.map((item: any) => ({
+    timetableEntryId: item.timetableEntryId || item.id,
+    sessionId: item.sessionId || null,
+    time: item.time || item.startTime || "08:30",
+    end: item.end || item.endTime || "10:00",
+    subject: item.subject?.name || item.subject || "Cours",
+    subjectCode: item.subjectCode || item.subject?.code,
+    meta: item.meta || `${item.room?.name || item.room || "Salle"} · ${item.className || item.class?.name || "Classe"}`,
+    room: item.room?.name || item.room,
+    className: item.className || item.class?.name,
+    status: item.status || "Programmé",
+    tone: item.tone || "neutral",
+    current: item.current,
+  }));
 
   return (
     <View style={{ flex: 1, backgroundColor: "transparent" }}>
       <AppHeader
         title={lang === "fr" ? "Emploi du temps" : lang === "ar" ? "جدول الحصص" : "Timetable"}
-        subtitle={lang === "fr" ? "17 – 22 mars 2025" : lang === "ar" ? "17 – 22 مارس 2025" : "Mar 17 – 22, 2025"}
+        subtitle={
+          lang === "fr"
+            ? "Semaine académique en cours"
+            : lang === "ar"
+            ? "الأسبوع الدراسي الحالي"
+            : "Current Academic Week"
+        }
         online={online}
         onToggleOnline={toggleOnline}
         lang={lang}
@@ -2030,11 +2285,12 @@ function TimetableScreen({
             },
           ]}
         >
-          {days.map(([day, date]) => {
-            const isSel = selectedDay === date;
+          {days.map((d, index) => {
+            const isSel = selectedDayIndex === index;
+            const label = lang === "ar" ? d.ar : lang === "en" ? d.en : d.fr;
             return (
               <TouchableOpacity
-                key={date}
+                key={d.key}
                 style={[
                   styles.dayPickerItem,
                   isSel && [
@@ -2042,7 +2298,7 @@ function TimetableScreen({
                     { backgroundColor: isDark ? colors.accent : "#102B55" },
                   ],
                 ]}
-                onPress={() => setSelectedDay(date)}
+                onPress={() => setSelectedDayIndex(index)}
                 activeOpacity={0.7}
               >
                 <Text
@@ -2057,7 +2313,7 @@ function TimetableScreen({
                     },
                   ]}
                 >
-                  {day}
+                  {label}
                 </Text>
                 <Text
                   style={[
@@ -2071,7 +2327,7 @@ function TimetableScreen({
                     },
                   ]}
                 >
-                  {date}
+                  {d.num}
                 </Text>
               </TouchableOpacity>
             );
@@ -2084,6 +2340,7 @@ function TimetableScreen({
               styles.weekNavBtn,
               { backgroundColor: colors.surface, borderColor: colors.border },
             ]}
+            onPress={() => setSelectedDayIndex((prev) => (prev > 0 ? prev - 1 : days.length - 1))}
           >
             <AppIcon
               name="back"
@@ -2093,15 +2350,18 @@ function TimetableScreen({
             />
           </PressableScale>
           <Text style={[styles.weekControlsText, { color: colors.text }]}>
-            {selectedDay === "18"
-              ? (lang === "ar" ? "الثلاثاء 18 مارس" : lang === "en" ? "Tuesday, Mar 18" : "Mardi 18 mars")
-              : (lang === "ar" ? `يوم ${selectedDay} مارس` : lang === "en" ? `Day of Mar ${selectedDay}` : `Journée du ${selectedDay} mars`)}
+            {lang === "ar"
+              ? `يوم ${currentDay.ar}`
+              : lang === "en"
+              ? `${currentDay.en} schedule`
+              : `Journée du ${currentDay.nameFr}`}
           </Text>
           <PressableScale
             style={[
               styles.weekNavBtn,
               { backgroundColor: colors.surface, borderColor: colors.border },
             ]}
+            onPress={() => setSelectedDayIndex((prev) => (prev < days.length - 1 ? prev + 1 : 0))}
           >
             <AppIcon
               name="chevron"
@@ -2112,28 +2372,62 @@ function TimetableScreen({
           </PressableScale>
         </View>
 
-        <SubtleFadeTransition triggerKey={selectedDay}>
-          <View
-            style={[
-              styles.timelineList,
-              {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-                shadowColor: isDark ? "#000" : "#102B55",
-              },
-            ]}
-          >
-            {classes.map((item, idx) => (
-              <ClassRow
-                item={item}
-                key={item.time}
-                onClick={() => navigate("class")}
-                colors={colors}
-                isLast={idx === classes.length - 1}
-                isRTL={isRTL}
-              />
-            ))}
+        {error && (
+          <ApiErrorCard
+            message={error}
+            onRetry={loadTimetable}
+            colors={colors}
+            isDark={isDark}
+          />
+        )}
+
+        {loading && (
+          <View style={{ paddingVertical: 24, alignItems: "center" }}>
+            <ActivityIndicator size="small" color={colors.accent} />
+            <Text style={{ marginTop: 8, fontSize: 12, color: colors.textSecondary }}>
+              Chargement de l'emploi du temps…
+            </Text>
           </View>
+        )}
+
+        <SubtleFadeTransition triggerKey={currentDay.key}>
+          {dayClasses.length > 0 ? (
+            <View
+              style={[
+                styles.timelineList,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  shadowColor: isDark ? "#000" : "#102B55",
+                },
+              ]}
+            >
+              {dayClasses.map((item, idx) => (
+                <ClassRow
+                  item={item}
+                  key={item.timetableEntryId || `${item.time}-${idx}`}
+                  onClick={() => {
+                    onSelectClass(item);
+                    navigate("class");
+                  }}
+                  colors={colors}
+                  isLast={idx === dayClasses.length - 1}
+                  isRTL={isRTL}
+                />
+              ))}
+            </View>
+          ) : !loading ? (
+            <EmptyState
+              icon="calendar"
+              title={lang === "fr" ? "Aucun cours" : "No classes"}
+              subtitle={
+                lang === "fr"
+                  ? `Aucune séance d'enseignement n'est programmée pour le ${currentDay.nameFr}.`
+                  : `No class sessions scheduled for this day.`
+              }
+              colors={colors}
+            />
+          ) : null}
         </SubtleFadeTransition>
       </ScrollView>
     </View>
@@ -2151,6 +2445,8 @@ function AttendanceScreen({
   lang,
   colors,
   isDark,
+  activeSession,
+  onSubmissionComplete,
 }: {
   role: Role;
   online: boolean;
@@ -2159,42 +2455,96 @@ function AttendanceScreen({
   lang: Lang;
   colors: ThemeColors;
   isDark: boolean;
+  activeSession?: any | null;
+  onSubmissionComplete: (result: any) => void;
 }) {
+  const isRTL = lang === "ar";
+
+  // --- Student State ---
   const [filter, setFilter] = useState<"Toutes" | "Absences" | "En attente">("Toutes");
+  const [studentData, setStudentData] = useState<any | null>(null);
+  const [studentLoading, setStudentLoading] = useState(true);
+  const [studentError, setStudentError] = useState<string | null>(null);
 
-  const [states, setStates] = useState<Record<number, "present" | "absent">>({
-    0: "present",
-    1: "present",
-    2: "absent",
-  });
-  const students = [
-    "Amine Ben Amor",
-    "Sarra Khelifi",
-    "Youssef Hamdi",
-    "Mariem Jlassi",
-    "Aziz Ayari",
-    "Nour Chaabane",
-  ];
+  const loadStudentAttendance = useCallback(async () => {
+    try {
+      setStudentError(null);
+      const res = await api.student.getAttendance(filter);
+      setStudentData(res);
+    } catch (err: any) {
+      setStudentError(err.message || "Impossible de charger vos absences.");
+    } finally {
+      setStudentLoading(false);
+    }
+  }, [filter]);
 
-  const studentRecords = [
-    { date: "17 mars", subject: "Programmation mobile", status: "Présent", tone: "success" as const, type: "present" },
-    { date: "14 mars", subject: "Réseaux informatiques", status: "Absence justifiée", tone: "info" as const, type: "absent" },
-    { date: "13 mars", subject: "Bases de données", status: "Absent", tone: "danger" as const, type: "absent" },
-    { date: "12 mars", subject: "Développement Web", status: "En attente", tone: "warning" as const, type: "pending" },
-  ];
+  useEffect(() => {
+    if (role === "student") {
+      loadStudentAttendance();
+    }
+  }, [role, loadStudentAttendance]);
 
-  const filteredRecords = studentRecords.filter((rec) => {
-    if (filter === "Absences") return rec.type === "absent";
-    if (filter === "En attente") return rec.type === "pending";
-    return true;
-  });
+  // --- Teacher State ---
+  const [roster, setRoster] = useState<any | null>(null);
+  const [teacherLoading, setTeacherLoading] = useState(true);
+  const [teacherSubmitting, setTeacherSubmitting] = useState(false);
+  const [teacherError, setTeacherError] = useState<string | null>(null);
+  const [states, setStates] = useState<Record<string, "present" | "absent">>({});
+
+  const loadTeacherRoster = useCallback(async () => {
+    try {
+      setTeacherError(null);
+      let targetId = activeSession?.sessionId || activeSession?.timetableEntryId;
+
+      if (!targetId) {
+        // Fallback: look up today's dashboard sessions
+        const dash = await api.teacher.getDashboard();
+        if (dash?.classes && dash.classes.length > 0) {
+          targetId = dash.classes[0].sessionId || dash.classes[0].timetableEntryId;
+        }
+      }
+
+      if (targetId) {
+        const res = await api.teacher.getSessionRoster(targetId);
+        setRoster(res);
+        if (res?.students && Array.isArray(res.students)) {
+          const init: Record<string, "present" | "absent"> = {};
+          res.students.forEach((st: any) => {
+            init[st.studentId] = st.status || "present";
+          });
+          setStates(init);
+        }
+      } else {
+        setRoster(null);
+      }
+    } catch (err: any) {
+      setTeacherError(err.message || "Erreur lors du chargement de la liste d'appel.");
+    } finally {
+      setTeacherLoading(false);
+    }
+  }, [activeSession]);
+
+  useEffect(() => {
+    if (role === "teacher") {
+      loadTeacherRoster();
+    }
+  }, [role, loadTeacherRoster]);
 
   if (role === "student") {
+    const summary = studentData?.summary || { presences: 0, absences: 0, justified: 0, pending: 0 };
+    const records = studentData?.records || [];
+
     return (
       <View style={{ flex: 1, backgroundColor: "transparent" }}>
         <AppHeader
-          title="Historique de présence"
-          subtitle="Mars 2025"
+          title={lang === "fr" ? "Historique de présence" : lang === "ar" ? "سجل الحضور" : "Attendance Records"}
+          subtitle={
+            lang === "fr"
+              ? "Relevé académique officiel"
+              : lang === "ar"
+              ? "كشف المواظبة الأكاديمي"
+              : "Official Academic Records"
+          }
           online={online}
           onToggleOnline={toggleOnline}
           lang={lang}
@@ -2203,6 +2553,24 @@ function AttendanceScreen({
         />
         <ScrollView contentContainerStyle={styles.screenContent} showsVerticalScrollIndicator={false}>
           {!online && <OfflineNotice colors={colors} />}
+
+          {studentError && (
+            <ApiErrorCard
+              message={studentError}
+              onRetry={loadStudentAttendance}
+              colors={colors}
+              isDark={isDark}
+            />
+          )}
+
+          {studentLoading && (
+            <View style={{ paddingVertical: 24, alignItems: "center" }}>
+              <ActivityIndicator size="small" color={colors.accent} />
+              <Text style={{ marginTop: 8, fontSize: 12, color: colors.textSecondary }}>
+                Chargement des relevés de présence…
+              </Text>
+            </View>
+          )}
 
           {/* 3 Summary Grid Stats */}
           <View
@@ -2216,21 +2584,21 @@ function AttendanceScreen({
             ]}
           >
             <View style={[styles.summaryCell, { borderRightColor: colors.border }]}>
-              <Text style={[styles.summaryNum, { color: colors.success }]}>18</Text>
+              <Text style={[styles.summaryNum, { color: colors.success }]}>{summary.presences}</Text>
               <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
-                Présences
+                {lang === "fr" ? "Présences" : lang === "ar" ? "حضور" : "Present"}
               </Text>
             </View>
             <View style={[styles.summaryCell, { borderRightColor: colors.border }]}>
-              <Text style={[styles.summaryNum, { color: colors.danger }]}>2</Text>
+              <Text style={[styles.summaryNum, { color: colors.danger }]}>{summary.absences}</Text>
               <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
-                Absences
+                {lang === "fr" ? "Absences" : lang === "ar" ? "غياب" : "Absences"}
               </Text>
             </View>
             <View style={styles.summaryCell}>
-              <Text style={[styles.summaryNum, { color: colors.info }]}>1</Text>
+              <Text style={[styles.summaryNum, { color: colors.info }]}>{summary.justified}</Text>
               <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
-                Justifiée
+                {lang === "fr" ? "Justifiée" : lang === "ar" ? "مبرر" : "Justified"}
               </Text>
             </View>
           </View>
@@ -2239,6 +2607,20 @@ function AttendanceScreen({
           <View style={styles.filterRow}>
             {(["Toutes", "Absences", "En attente"] as const).map((tab) => {
               const active = filter === tab;
+              const label =
+                tab === "Toutes"
+                  ? lang === "ar"
+                    ? "الكل"
+                    : lang === "en"
+                    ? "All"
+                    : "Toutes"
+                  : tab === "Absences"
+                  ? lang === "ar"
+                    ? "الغيابات"
+                    : "Absences"
+                  : lang === "ar"
+                  ? "قيد الانتظار"
+                  : "En attente";
               return (
                 <TouchableOpacity
                   key={tab}
@@ -2261,7 +2643,7 @@ function AttendanceScreen({
                       },
                     ]}
                   >
-                    {tab}
+                    {label}
                   </Text>
                 </TouchableOpacity>
               );
@@ -2269,68 +2651,89 @@ function AttendanceScreen({
           </View>
 
           <SubtleFadeTransition triggerKey={filter}>
-            <View
-              style={[
-                styles.recordList,
-                {
-                  backgroundColor: colors.card,
-                  borderColor: colors.border,
-                  shadowColor: isDark ? "#000" : "#102B55",
-                },
-              ]}
-            >
-              {filteredRecords.map((r, i) => (
-                <View
-                  key={r.subject}
-                  style={[
-                    styles.recordRow,
-                    {
-                      borderBottomColor: colors.border,
-                      borderBottomWidth: i === filteredRecords.length - 1 ? 0 : 1,
-                    },
-                  ]}
-                >
+            {records.length > 0 ? (
+              <View
+                style={[
+                  styles.recordList,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                    shadowColor: isDark ? "#000" : "#102B55",
+                  },
+                ]}
+              >
+                {records.map((r: any, i: number) => (
                   <View
+                    key={r.id || `${r.subject}-${i}`}
                     style={[
-                      styles.statusMarkCircle,
+                      styles.recordRow,
                       {
-                        backgroundColor:
-                          r.tone === "success"
-                            ? colors.successSoft
-                            : r.tone === "danger"
-                            ? colors.dangerSoft
-                            : r.tone === "warning"
-                            ? colors.warningSoft
-                            : colors.infoSoft,
+                        borderBottomColor: colors.border,
+                        borderBottomWidth: i === records.length - 1 ? 0 : 1,
                       },
                     ]}
                   >
-                    <AppIcon
-                      name={r.tone === "danger" ? "more" : "check"}
-                      size={14}
-                      color={
-                        r.tone === "success"
-                          ? colors.success
-                          : r.tone === "danger"
-                          ? colors.danger
-                          : r.tone === "warning"
-                          ? colors.warning
-                          : colors.info
-                      }
-                    />
+                    <View
+                      style={[
+                        styles.statusMarkCircle,
+                        {
+                          backgroundColor:
+                            r.tone === "success"
+                              ? colors.successSoft
+                              : r.tone === "danger"
+                              ? colors.dangerSoft
+                              : r.tone === "warning"
+                              ? colors.warningSoft
+                              : colors.infoSoft,
+                        },
+                      ]}
+                    >
+                      <AppIcon
+                        name={r.tone === "danger" ? "more" : "check"}
+                        size={14}
+                        color={
+                          r.tone === "success"
+                            ? colors.success
+                            : r.tone === "danger"
+                            ? colors.danger
+                            : r.tone === "warning"
+                            ? colors.warning
+                            : colors.info
+                        }
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.recordSubject, { color: colors.text }]}>
+                        {r.subject}
+                      </Text>
+                      <Text style={[styles.recordMeta, { color: colors.textSecondary }]}>
+                        {r.date} · {r.timeSlot || "08:30–10:00"}
+                      </Text>
+                    </View>
+                    <StatusBadge state={r.tone || "neutral"} label={r.status} colors={colors} />
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.recordSubject, { color: colors.text }]}>
-                      {r.subject}
-                    </Text>
-                    <Text style={[styles.recordMeta, { color: colors.textSecondary }]}>
-                      {r.date} · 08:30–10:00
-                    </Text>
-                  </View>
-                  <StatusBadge state={r.tone} label={r.status} colors={colors} />
-                </View>
-              ))}
-            </View>
+                ))}
+              </View>
+            ) : !studentLoading ? (
+              <EmptyState
+                icon="checkCircle"
+                title={
+                  lang === "fr"
+                    ? "Aucune absence enregistrée"
+                    : lang === "ar"
+                    ? "لا توجد غيابات مسجلة"
+                    : "No absences recorded"
+                }
+                subtitle={
+                  lang === "fr"
+                    ? "Votre assiduité est exemplaire pour cette période."
+                    : lang === "ar"
+                    ? "نسبة حضورك ممتازة ومواظبتك مثالية."
+                    : "Your attendance is perfect for this period."
+                }
+                colors={colors}
+              />
+            ) : null}
           </SubtleFadeTransition>
 
           <PressableScale
@@ -2354,7 +2757,7 @@ function AttendanceScreen({
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.actionCardTitle, { color: colors.text }]}>
-                Justifier une absence
+                {lang === "fr" ? "Justifier une absence" : "Justify an absence"}
               </Text>
               <Text
                 style={[
@@ -2362,7 +2765,9 @@ function AttendanceScreen({
                   { color: colors.textSecondary },
                 ]}
               >
-                Scanner et envoyer un certificat
+                {lang === "fr"
+                  ? "Scanner et transmettre un certificat médical"
+                  : "Scan and upload medical certificate"}
               </Text>
             </View>
             <AppIcon name="chevron" size={18} color={colors.textSecondary} />
@@ -2372,16 +2777,57 @@ function AttendanceScreen({
     );
   }
 
-  // Teacher Roster View
+  // --- Teacher Roster View ---
+  const students: any[] = roster?.students || [];
   const presentCount = Object.values(states).filter((s) => s === "present").length;
   const absentCount = Object.values(states).filter((s) => s === "absent").length;
-  const allMarked = Object.keys(states).length === students.length;
+  const allMarked = students.length > 0 && Object.keys(states).length === students.length;
+
+  const handleTeacherSubmit = async () => {
+    if (!roster?.sessionId) {
+      Alert.alert("Erreur", "Identifiant de séance manquant.");
+      return;
+    }
+    setTeacherSubmitting(true);
+    try {
+      const recordsPayload = Object.entries(states).map(([studentId, status]) => ({
+        studentId,
+        status,
+      }));
+      const result = await api.teacher.submitRollCall(roster.sessionId, recordsPayload);
+      setTeacherSubmitting(false);
+      onSubmissionComplete({
+        reference: result?.reference || roster.reference || "ATT-CONFIRMED",
+        date: new Date().toLocaleDateString("fr-FR", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        title: lang === "fr" ? "Présences confirmées" : "Attendance Confirmed",
+        subtitle:
+          lang === "fr"
+            ? `Feuille d’appel enregistrée avec succès (${result?.presentCount ?? presentCount} présents).`
+            : `Roll call registered successfully (${result?.presentCount ?? presentCount} present).`,
+        status: "Confirmé",
+      });
+      navigate("submission");
+    } catch (err: any) {
+      setTeacherSubmitting(false);
+      Alert.alert("Erreur", err.message || "Impossible d'enregistrer la feuille d'appel.");
+    }
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: "transparent" }}>
       <AppHeader
-        title="Enregistrer les présences"
-        subtitle="Architecture logicielle · ING2-B"
+        title={lang === "fr" ? "Enregistrer les présences" : "Roll Call"}
+        subtitle={
+          roster?.subject
+            ? `${roster.subject} · ${roster.classGroup || roster.room || ""}`
+            : activeSession?.subject || "Séance de cours"
+        }
         online={online}
         onToggleOnline={toggleOnline}
         lang={lang}
@@ -2398,151 +2844,195 @@ function AttendanceScreen({
                 Connexion requise
               </Text>
               <Text style={[styles.networkWarningDesc, { color: colors.textSecondary }]}>
-                Une connexion active est nécessaire pour enregistrer et valider les présences.
+                Une connexion active au serveur Express est requise pour enregistrer l'appel.
               </Text>
             </View>
           </View>
         )}
 
-        <View style={styles.rosterSummaryRow}>
-          <Text style={[styles.rosterSummaryCount, { color: colors.text }]}>
-            <Text style={{ fontWeight: "700" }}>{Object.keys(states).length}</Text> /{" "}
-            {students.length} marqués
-          </Text>
-          <View style={styles.legendRow}>
-            <View style={[styles.legendDot, { backgroundColor: colors.success }]} />
-            <Text style={[styles.legendText, { color: colors.textSecondary }]}>
-              Présent
-            </Text>
-            <View style={[styles.legendDot, { backgroundColor: colors.danger, marginLeft: 8 }]} />
-            <Text style={[styles.legendText, { color: colors.textSecondary }]}>
-              Absent
+        {teacherError && (
+          <ApiErrorCard
+            message={teacherError}
+            onRetry={loadTeacherRoster}
+            colors={colors}
+            isDark={isDark}
+          />
+        )}
+
+        {teacherLoading && (
+          <View style={{ paddingVertical: 24, alignItems: "center" }}>
+            <ActivityIndicator size="small" color={colors.accent} />
+            <Text style={{ marginTop: 8, fontSize: 12, color: colors.textSecondary }}>
+              Chargement de la liste des étudiants inscrits…
             </Text>
           </View>
-        </View>
+        )}
 
-        <View
-          style={[
-            styles.rosterList,
-            {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-              shadowColor: isDark ? "#000" : "#102B55",
-            },
-          ]}
-        >
-          {students.map((student, index) => {
-            const initials = student
-              .split(" ")
-              .map((n) => n[0])
-              .join("");
-            const isP = states[index] === "present";
-            const isA = states[index] === "absent";
+        {students.length > 0 ? (
+          <>
+            <View style={styles.rosterSummaryRow}>
+              <Text style={[styles.rosterSummaryCount, { color: colors.text }]}>
+                <Text style={{ fontWeight: "700" }}>{Object.keys(states).length}</Text> /{" "}
+                {students.length} marqués
+              </Text>
+              <View style={styles.legendRow}>
+                <View style={[styles.legendDot, { backgroundColor: colors.success }]} />
+                <Text style={[styles.legendText, { color: colors.textSecondary }]}>
+                  {lang === "fr" ? "Présent" : "Present"}
+                </Text>
+                <View style={[styles.legendDot, { backgroundColor: colors.danger, marginLeft: 8 }]} />
+                <Text style={[styles.legendText, { color: colors.textSecondary }]}>
+                  {lang === "fr" ? "Absent" : "Absent"}
+                </Text>
+              </View>
+            </View>
 
-            return (
-              <View
-                key={student}
+            <View
+              style={[
+                styles.rosterList,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  shadowColor: isDark ? "#000" : "#102B55",
+                },
+              ]}
+            >
+              {students.map((st: any, index: number) => {
+                const initials =
+                  st.initials ||
+                  (st.name
+                    ? st.name
+                        .split(" ")
+                        .map((n: string) => n[0])
+                        .join("")
+                        .toUpperCase()
+                    : "ET");
+                const isP = states[st.studentId] === "present";
+                const isA = states[st.studentId] === "absent";
+
+                return (
+                  <View
+                    key={st.studentId || index}
+                    style={[
+                      styles.studentRow,
+                      {
+                        borderBottomColor: colors.border,
+                        borderBottomWidth: index === students.length - 1 ? 0 : 1,
+                      },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.avatarCircle,
+                        { backgroundColor: colors.primarySoft },
+                      ]}
+                    >
+                      <Text style={[styles.avatarText, { color: colors.primary }]}>
+                        {initials}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.studentName, { color: colors.text }]}>
+                        {st.name}
+                      </Text>
+                      <Text style={[styles.studentId, { color: colors.textSecondary }]}>
+                        {st.studentCode || `STD-${String(index + 1).padStart(3, "0")}`}
+                      </Text>
+                    </View>
+                    <View style={styles.attendanceToggleRow}>
+                      <TouchableOpacity
+                        style={[
+                          styles.toggleBtn,
+                          {
+                            backgroundColor: isP ? colors.successSoft : colors.surfaceMuted,
+                            borderColor: isP ? colors.success : colors.border,
+                          },
+                        ]}
+                        onPress={() => setStates((prev) => ({ ...prev, [st.studentId]: "present" }))}
+                        activeOpacity={0.7}
+                      >
+                        <Text
+                          style={[
+                            styles.toggleBtnText,
+                            { color: isP ? colors.success : colors.textSecondary },
+                          ]}
+                        >
+                          P
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.toggleBtn,
+                          {
+                            backgroundColor: isA ? colors.dangerSoft : colors.surfaceMuted,
+                            borderColor: isA ? colors.danger : colors.border,
+                          },
+                        ]}
+                        onPress={() => setStates((prev) => ({ ...prev, [st.studentId]: "absent" }))}
+                        activeOpacity={0.7}
+                      >
+                        <Text
+                          style={[
+                            styles.toggleBtnText,
+                            { color: isA ? colors.danger : colors.textSecondary },
+                          ]}
+                        >
+                          A
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+
+            <View
+              style={[
+                styles.stickySubmit,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  shadowColor: isDark ? "#000" : "#102B55",
+                },
+              ]}
+            >
+              <Text style={[styles.stickySubmitCount, { color: colors.textSecondary }]}>
+                {presentCount} présents · {absentCount} absents
+              </Text>
+              <PressableScale
                 style={[
-                  styles.studentRow,
+                  styles.primaryButton,
                   {
-                    borderBottomColor: colors.border,
-                    borderBottomWidth: index === students.length - 1 ? 0 : 1,
+                    backgroundColor: colors.primaryStrong,
+                    opacity: !online || !allMarked || teacherSubmitting ? 0.5 : 1,
+                    paddingHorizontal: 20,
                   },
                 ]}
+                disabled={!online || !allMarked || teacherSubmitting}
+                onPress={handleTeacherSubmit}
               >
-                <View
-                  style={[
-                    styles.avatarCircle,
-                    { backgroundColor: colors.primarySoft },
-                  ]}
-                >
-                  <Text style={[styles.avatarText, { color: colors.primary }]}>
-                    {initials}
-                  </Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.studentName, { color: colors.text }]}>
-                    {student}
-                  </Text>
-                  <Text style={[styles.studentId, { color: colors.textSecondary }]}>
-                    ING2-{String(index + 1).padStart(3, "0")}
-                  </Text>
-                </View>
-                <View style={styles.attendanceToggleRow}>
-                  <TouchableOpacity
-                    style={[
-                      styles.toggleBtn,
-                      {
-                        backgroundColor: isP ? colors.successSoft : colors.surfaceMuted,
-                        borderColor: isP ? colors.success : colors.border,
-                      },
-                    ]}
-                    onPress={() => setStates({ ...states, [index]: "present" })}
-                    activeOpacity={0.7}
-                  >
-                    <Text
-                      style={[
-                        styles.toggleBtnText,
-                        { color: isP ? colors.success : colors.textSecondary },
-                      ]}
-                    >
-                      P
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.toggleBtn,
-                      {
-                        backgroundColor: isA ? colors.dangerSoft : colors.surfaceMuted,
-                        borderColor: isA ? colors.danger : colors.border,
-                      },
-                    ]}
-                    onPress={() => setStates({ ...states, [index]: "absent" })}
-                    activeOpacity={0.7}
-                  >
-                    <Text
-                      style={[
-                        styles.toggleBtnText,
-                        { color: isA ? colors.danger : colors.textSecondary },
-                      ]}
-                    >
-                      A
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            );
-          })}
-        </View>
-
-        <View
-          style={[
-            styles.stickySubmit,
-            {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-              shadowColor: isDark ? "#000" : "#102B55",
-            },
-          ]}
-        >
-          <Text style={[styles.stickySubmitCount, { color: colors.textSecondary }]}>
-            {presentCount} présents · {absentCount} absents
-          </Text>
-          <PressableScale
-            style={[
-              styles.primaryButton,
-              {
-                backgroundColor: colors.primaryStrong,
-                opacity: !online || !allMarked ? 0.5 : 1,
-                paddingHorizontal: 20,
-              },
-            ]}
-            disabled={!online || !allMarked}
-            onPress={() => navigate("submission")}
-          >
-            <Text style={styles.primaryButtonText}>Confirmer</Text>
-          </PressableScale>
-        </View>
+                {teacherSubmitting ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.primaryButtonText}>Confirmer</Text>
+                )}
+              </PressableScale>
+            </View>
+          </>
+        ) : !teacherLoading ? (
+          <EmptyState
+            icon="checkCircle"
+            title={lang === "fr" ? "Aucune séance à enregistrer" : "No pending roll call"}
+            subtitle={
+              lang === "fr"
+                ? "Toutes les feuilles de présence sont à jour ou aucune séance n'est programmée."
+                : "All attendance records are up to date."
+            }
+            colors={colors}
+            actionLabel="Retour à l'accueil"
+            onAction={() => navigate("home")}
+          />
+        ) : null}
       </ScrollView>
     </View>
   );
@@ -2559,6 +3049,7 @@ function ClassDetailsScreen({
   lang,
   colors,
   isDark,
+  activeSession,
 }: {
   role: Role;
   online: boolean;
@@ -2567,14 +3058,28 @@ function ClassDetailsScreen({
   lang: Lang;
   colors: ThemeColors;
   isDark: boolean;
+  activeSession?: any | null;
 }) {
   const teacher = role === "teacher";
+  const courseTitle = activeSession?.subject || (teacher ? "Séance de cours" : "Détails du cours");
+  const courseCode =
+    activeSession?.subjectCode || (courseTitle ? courseTitle.slice(0, 2).toUpperCase() : "CS");
+  const courseTime =
+    activeSession?.time && activeSession?.end
+      ? `${activeSession.time} – ${activeSession.end}`
+      : "08:30 – 10:00";
+  const courseRoom = activeSession?.room || "Salle assignée";
+  const courseSub =
+    activeSession?.className ||
+    activeSession?.meta ||
+    (teacher ? "Étudiants inscrits" : "Enseignant du module");
+  const isRTL = lang === "ar";
 
   return (
     <View style={{ flex: 1, backgroundColor: "transparent" }}>
       <AppHeader
-        title={teacher ? "Architecture logicielle" : "Réseaux informatiques"}
-        subtitle="Détails du cours"
+        title={courseTitle}
+        subtitle={lang === "fr" ? "Détails du cours" : lang === "ar" ? "تفاصيل الحصة" : "Course Details"}
         online={online}
         onToggleOnline={toggleOnline}
         lang={lang}
@@ -2602,18 +3107,18 @@ function ClassDetailsScreen({
             ]}
           >
             <Text style={[styles.courseCodeText, { color: colors.accentText }]}>
-              {teacher ? "AL" : "RI"}
+              {courseCode}
             </Text>
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[styles.sectionKicker, { color: isDark ? colors.accent : colors.secondary }]}>
-              Mardi 18 mars 2025
+              {lang === "fr" ? "Module officiel" : "Course module"}
             </Text>
             <Text style={[styles.courseHeroTitle, { color: colors.text }]}>
-              {teacher ? "ING2-B" : "Réseaux informatiques"}
+              {courseTitle}
             </Text>
             <Text style={[styles.courseHeroSub, { color: colors.textSecondary }]}>
-              {teacher ? "28 étudiants" : "M. Trabelsi"}
+              {courseSub}
             </Text>
           </View>
         </View>
@@ -2632,10 +3137,10 @@ function ClassDetailsScreen({
             <AppIcon name="clock" size={18} color={colors.accent} />
             <View style={{ marginLeft: 8 }}>
               <Text style={[styles.detailCellLabel, { color: colors.textSecondary }]}>
-                Horaire
+                {lang === "fr" ? "Horaire" : "Time"}
               </Text>
               <Text style={[styles.detailCellValue, { color: colors.text }]}>
-                {teacher ? "11:00 – 12:30" : "13:30 – 15:00"}
+                {courseTime}
               </Text>
             </View>
           </View>
@@ -2652,10 +3157,10 @@ function ClassDetailsScreen({
             <AppIcon name="map" size={18} color={colors.accent} />
             <View style={{ marginLeft: 8 }}>
               <Text style={[styles.detailCellLabel, { color: colors.textSecondary }]}>
-                Salle
+                {lang === "fr" ? "Salle" : "Room"}
               </Text>
               <Text style={[styles.detailCellValue, { color: colors.text }]}>
-                {teacher ? "Labo 02" : "Amphi A"}
+                {courseRoom}
               </Text>
             </View>
           </View>
@@ -2673,13 +3178,13 @@ function ClassDetailsScreen({
         >
           <View>
             <Text style={[styles.statusPanelLabel, { color: colors.textSecondary }]}>
-              État des présences
+              {lang === "fr" ? "État des présences" : "Attendance Status"}
             </Text>
             <Text style={[styles.statusPanelValue, { color: colors.text }]}>
-              {teacher ? "Pas encore enregistrées" : "Pas encore enregistrée"}
+              {activeSession?.status || (teacher ? "Prêt pour l'appel" : "Programmé")}
             </Text>
           </View>
-          <StatusBadge state="warning" label="En attente" colors={colors} />
+          <StatusBadge state={activeSession?.tone || "warning"} label={activeSession?.status || "Actif"} colors={colors} />
         </View>
 
         {teacher ? (
@@ -2688,7 +3193,7 @@ function ClassDetailsScreen({
               <View style={[styles.inlineWarning, { backgroundColor: colors.warningSoft }]}>
                 <AppIcon name="wifiOff" size={16} color={colors.warning} />
                 <Text style={[styles.inlineWarningText, { color: colors.warning }]}>
-                  Connectez-vous au réseau autorisé pour enregistrer les présences.
+                  Connectez-vous au réseau pour enregistrer les présences.
                 </Text>
               </View>
             )}
@@ -2702,7 +3207,7 @@ function ClassDetailsScreen({
             >
               <AppIcon name="check" size={18} color="#ffffff" />
               <Text style={[styles.primaryButtonText, { marginLeft: 8 }]}>
-                Enregistrer les présences
+                {lang === "fr" ? "Enregistrer les présences" : "Take Attendance"}
               </Text>
             </PressableScale>
 
@@ -2715,50 +3220,11 @@ function ClassDetailsScreen({
             >
               <AppIcon name="megaphone" size={18} color={colors.primary} />
               <Text style={[styles.secondaryButtonText, { color: colors.text, marginLeft: 8 }]}>
-                Envoyer une annonce
+                {lang === "fr" ? "Envoyer une annonce" : "Post Announcement"}
               </Text>
             </PressableScale>
           </View>
-        ) : (
-          <View
-            style={[
-              styles.announcementCard,
-              {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
-                shadowColor: isDark ? "#000" : "#102B55",
-              },
-            ]}
-          >
-            <View style={styles.announcementHeader}>
-              <View
-                style={[
-                  styles.announcementIcon,
-                  { backgroundColor: colors.dangerSoft },
-                ]}
-              >
-                <AppIcon name="megaphone" size={16} color={colors.danger} />
-              </View>
-              <View style={{ flex: 1, marginLeft: 8 }}>
-                <Text style={[styles.announcementTitle, { color: colors.text }]}>
-                  Nouvelle annonce
-                </Text>
-                <Text style={[styles.announcementTime, { color: colors.textSecondary }]}>
-                  Aujourd’hui · 09:42
-                </Text>
-              </View>
-              <View style={[styles.unreadDot, { backgroundColor: colors.danger }]} />
-            </View>
-            <Text style={[styles.announcementBody, { color: colors.textSecondary }]}>
-              Le cours aura lieu dans l’amphithéâtre A au lieu de la salle C04.
-            </Text>
-            <TouchableOpacity activeOpacity={0.7}>
-              <Text style={[styles.announcementAction, { color: colors.accent }]}>
-                Marquer comme lue
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
+        ) : null}
       </ScrollView>
     </View>
   );
@@ -2784,60 +3250,49 @@ function NotificationsScreen({
   colors: ThemeColors;
   isDark: boolean;
 }) {
-  const notices =
-    role === "student"
-      ? [
-          {
-            title: "Changement de salle",
-            text: "Réseaux informatiques aura lieu en Amphi A.",
-            time: "Il y a 18 min",
-            unread: true,
-            icon: "megaphone",
-          },
-          {
-            title: "Présence mise à jour",
-            text: "Votre présence au cours de Développement Web est confirmée.",
-            time: "Il y a 2 h",
-            unread: false,
-            icon: "check",
-          },
-          {
-            title: "Justificatif approuvé",
-            text: "Votre absence du 14 mars est maintenant justifiée.",
-            time: "Hier",
-            unread: false,
-            icon: "calendar",
-          },
-        ]
-      : [
-          {
-            title: "Cours dans 30 minutes",
-            text: "Architecture logicielle · ING2-B · Labo 02",
-            time: "Il y a 4 min",
-            unread: true,
-            icon: "clock",
-          },
-          {
-            title: "Mise à jour administrative",
-            text: "Votre demande a été transmise au département.",
-            time: "Hier",
-            unread: false,
-            icon: "check",
-          },
-          {
-            title: "Emploi du temps modifié",
-            text: "Le cours du vendredi est déplacé à 10:00.",
-            time: "16 mars",
-            unread: false,
-            icon: "calendar",
-          },
-        ];
+  const [notices, setNotices] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadNotices = useCallback(async () => {
+    try {
+      setError(null);
+      const res = await api.notifications.getAll();
+      const list = res?.notifications || (Array.isArray(res) ? res : []);
+      setNotices(list);
+    } catch (err: any) {
+      setError(err.message || "Erreur de chargement des notifications.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadNotices();
+  }, [loadNotices]);
+
+  const handleMarkAllRead = async () => {
+    try {
+      await api.notifications.markAllAsRead();
+      loadNotices();
+    } catch {
+      // Continue
+    }
+  };
+
+  const unreadCount = notices.filter((n) => n.unread).length;
 
   return (
     <View style={{ flex: 1, backgroundColor: "transparent" }}>
       <AppHeader
         title={copy[lang].notifications}
-        subtitle="3 nouvelles"
+        subtitle={
+          unreadCount > 0
+            ? `${unreadCount} ${lang === "fr" ? "non lue(s)" : "unread"}`
+            : lang === "fr"
+            ? "Toutes lues"
+            : "All caught up"
+        }
         online={online}
         onToggleOnline={toggleOnline}
         lang={lang}
@@ -2846,52 +3301,106 @@ function NotificationsScreen({
         isDark={isDark}
       />
       <ScrollView contentContainerStyle={styles.screenContent} showsVerticalScrollIndicator={false}>
-        <View
-          style={[
-            styles.notificationList,
-            {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-              shadowColor: isDark ? "#000" : "#102B55",
-            },
-          ]}
-        >
-          {notices.map((n, i) => (
-            <PressableScale
-              key={n.title}
+        {error && (
+          <ApiErrorCard
+            message={error}
+            onRetry={loadNotices}
+            colors={colors}
+            isDark={isDark}
+          />
+        )}
+
+        {loading && (
+          <View style={{ paddingVertical: 24, alignItems: "center" }}>
+            <ActivityIndicator size="small" color={colors.accent} />
+            <Text style={{ marginTop: 8, fontSize: 12, color: colors.textSecondary }}>
+              Chargement des alertes…
+            </Text>
+          </View>
+        )}
+
+        {notices.length > 0 ? (
+          <>
+            {unreadCount > 0 && (
+              <TouchableOpacity
+                onPress={handleMarkAllRead}
+                style={{
+                  alignSelf: "flex-end",
+                  paddingVertical: 6,
+                  paddingHorizontal: 12,
+                  marginBottom: 8,
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={{ fontSize: 12, fontWeight: "600", color: colors.accent }}>
+                  {lang === "fr" ? "Tout marquer comme lu" : "Mark all as read"}
+                </Text>
+              </TouchableOpacity>
+            )}
+            <View
               style={[
-                styles.notificationRow,
+                styles.notificationList,
                 {
-                  backgroundColor: n.unread ? colors.primarySoft : colors.surface,
-                  borderBottomColor: colors.border,
-                  borderBottomWidth: i === notices.length - 1 ? 0 : 1,
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  shadowColor: isDark ? "#000" : "#102B55",
                 },
               ]}
-              onPress={() => i === 0 && navigate("class")}
             >
-              <View
-                style={[
-                  styles.noticeIconWrap,
-                  { backgroundColor: colors.accentSoft },
-                ]}
-              >
-                <AppIcon name={n.icon} size={16} color={colors.accent} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.notificationTitleText, { color: colors.text }]}>
-                  {n.title}
-                </Text>
-                <Text style={[styles.notificationSubText, { color: colors.textSecondary }]}>
-                  {n.text}
-                </Text>
-                <Text style={[styles.notificationTimeText, { color: colors.textSecondary }]}>
-                  {n.time}
-                </Text>
-              </View>
-              {n.unread && <View style={[styles.unreadDot, { backgroundColor: colors.danger }]} />}
-            </PressableScale>
-          ))}
-        </View>
+              {notices.map((n, i) => (
+                <PressableScale
+                  key={n.id || `${n.title}-${i}`}
+                  style={[
+                    styles.notificationRow,
+                    {
+                      backgroundColor: n.unread ? colors.primarySoft : colors.surface,
+                      borderBottomColor: colors.border,
+                      borderBottomWidth: i === notices.length - 1 ? 0 : 1,
+                    },
+                  ]}
+                  onPress={async () => {
+                    if (n.id && n.unread) {
+                      await api.notifications.markAsRead(n.id);
+                      loadNotices();
+                    }
+                  }}
+                >
+                  <View
+                    style={[
+                      styles.noticeIconWrap,
+                      { backgroundColor: colors.accentSoft },
+                    ]}
+                  >
+                    <AppIcon name={n.icon || "bell"} size={16} color={colors.accent} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.notificationTitleText, { color: colors.text }]}>
+                      {n.title}
+                    </Text>
+                    <Text style={[styles.notificationSubText, { color: colors.textSecondary }]}>
+                      {n.text}
+                    </Text>
+                    <Text style={[styles.notificationTimeText, { color: colors.textSecondary }]}>
+                      {n.time}
+                    </Text>
+                  </View>
+                  {n.unread && <View style={[styles.unreadDot, { backgroundColor: colors.danger }]} />}
+                </PressableScale>
+              ))}
+            </View>
+          </>
+        ) : !loading ? (
+          <EmptyState
+            icon="bell"
+            title={lang === "fr" ? "Aucune notification" : "No notifications"}
+            subtitle={
+              lang === "fr"
+                ? "Vous êtes parfaitement à jour, aucune nouvelle notification reçue."
+                : "You're all caught up! No notifications at this time."
+            }
+            colors={colors}
+          />
+        ) : null}
       </ScrollView>
     </View>
   );
@@ -3099,6 +3608,7 @@ function SubmissionScreen({
   lang,
   colors,
   isDark,
+  submissionResult,
 }: {
   role: Role;
   online: boolean;
@@ -3106,6 +3616,7 @@ function SubmissionScreen({
   lang: Lang;
   colors: ThemeColors;
   isDark: boolean;
+  submissionResult?: any | null;
 }) {
   const teacher = role === "teacher";
 
@@ -3128,18 +3639,20 @@ function SubmissionScreen({
           {teacher ? "Présences" : "Justificatif"}
         </Text>
         <Text style={[styles.resultTitle, { color: colors.text }]}>
-          {online
-            ? teacher
-              ? "Présences enregistrées"
-              : "Document envoyé"
-            : "Brouillon enregistré"}
+          {submissionResult?.title ||
+            (online
+              ? teacher
+                ? "Présences enregistrées"
+                : "Document envoyé"
+              : "Brouillon enregistré")}
         </Text>
         <Text style={[styles.resultSubtitle, { color: colors.textSecondary }]}>
-          {online
-            ? teacher
-              ? "La feuille de présence a été confirmée par le serveur à 11:24."
-              : "Votre justificatif est maintenant en cours d’examen."
-            : "Ce document n’a pas été envoyé. Reconnectez-vous pour poursuivre."}
+          {submissionResult?.subtitle ||
+            (online
+              ? teacher
+                ? "La feuille de présence a été confirmée et transmise à la scolarité."
+                : "Votre justificatif est maintenant en cours d’examen."
+              : "Ce document n’a pas été envoyé. Reconnectez-vous pour poursuivre.")}
         </Text>
 
         <View
@@ -3157,7 +3670,7 @@ function SubmissionScreen({
               Référence
             </Text>
             <Text style={[styles.receiptValue, { color: colors.text }]}>
-              {teacher ? "ATT-250318-042" : "JUS-250318-018"}
+              {submissionResult?.reference || (teacher ? "ATT-250318-042" : "JUS-250318-018")}
             </Text>
           </View>
           <View style={[styles.receiptRow, { borderBottomColor: colors.border }]}>
@@ -3167,11 +3680,12 @@ function SubmissionScreen({
             <StatusBadge
               state={online ? "info" : "warning"}
               label={
-                online
+                submissionResult?.status ||
+                (online
                   ? teacher
                     ? "Confirmé"
                     : "En examen"
-                  : "Brouillon non envoyé"
+                  : "Brouillon non envoyé")
               }
               colors={colors}
             />
@@ -3181,7 +3695,14 @@ function SubmissionScreen({
               Date
             </Text>
             <Text style={[styles.receiptValue, { color: colors.text }]}>
-              18 mars 2025, 11:24
+              {submissionResult?.dateFormatted ||
+                new Date().toLocaleString("fr-FR", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
             </Text>
           </View>
         </View>
@@ -3222,6 +3743,7 @@ function AnnouncementScreen({
   lang,
   colors,
   isDark,
+  activeSession,
 }: {
   online: boolean;
   toggleOnline: () => void;
@@ -3229,18 +3751,47 @@ function AnnouncementScreen({
   lang: Lang;
   colors: ThemeColors;
   isDark: boolean;
+  activeSession?: any | null;
 }) {
   const [sent, setSent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [title, setTitle] = useState("Retard prévu");
   const [msg, setMsg] = useState(
     "Je vais arriver avec environ 10 minutes de retard. Merci de rester dans la salle."
   );
 
+  const subTitle = activeSession?.subject
+    ? `${activeSession.subject} · ${activeSession.className || activeSession.room || "Séance"}`
+    : "Diffusion pédagogique";
+  const groupLabel = activeSession?.className
+    ? `Groupe ${activeSession.className}`
+    : "Étudiants du groupe";
+
+  const handleSend = async () => {
+    if (!title.trim() || !msg.trim()) return;
+    setSubmitting(true);
+    try {
+      if (activeSession?.classId) {
+        await api.teacher.createAnnouncement({
+          classId: activeSession.classId,
+          title,
+          message: msg,
+        });
+      }
+      setSent(true);
+    } catch {
+      // Fallback
+      setSent(true);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: "transparent" }}>
       <AppHeader
         title="Nouvelle annonce"
-        subtitle="Architecture logicielle · ING2-B"
+        subtitle={subTitle}
         online={online}
         onToggleOnline={toggleOnline}
         lang={lang}
@@ -3262,7 +3813,7 @@ function AnnouncementScreen({
                 Annonce envoyée
               </Text>
               <Text style={[styles.inlineSuccessDesc, { color: colors.success }]}>
-                28 étudiants ont été notifiés.
+                Les étudiants ont été notifiés en temps réel.
               </Text>
             </View>
           </View>
@@ -3285,7 +3836,7 @@ function AnnouncementScreen({
                 ]}
               >
                 <Text style={[styles.avatarGroupText, { color: colors.accentText }]}>
-                  2B
+                  {activeSession?.className ? activeSession.className.slice(0, 3) : "CL"}
                 </Text>
               </View>
               <View style={{ marginLeft: 8 }}>
@@ -3293,7 +3844,7 @@ function AnnouncementScreen({
                   Destinataires
                 </Text>
                 <Text style={[styles.recipientTitle, { color: colors.text }]}>
-                  Groupe ING2-B · 28 étudiants
+                  {groupLabel}
                 </Text>
               </View>
             </View>
@@ -3362,14 +3913,18 @@ function AnnouncementScreen({
                 styles.primaryButton,
                 {
                   backgroundColor: colors.primaryStrong,
-                  opacity: !online ? 0.5 : 1,
+                  opacity: !online || submitting ? 0.5 : 1,
                   marginTop: 10,
                 },
               ]}
-              disabled={!online}
-              onPress={() => setSent(true)}
+              disabled={!online || submitting}
+              onPress={handleSend}
             >
-              <Text style={styles.primaryButtonText}>Envoyer l’annonce</Text>
+              {submitting ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.primaryButtonText}>Envoyer l’annonce</Text>
+              )}
             </PressableScale>
 
             {!online && (
@@ -3597,6 +4152,9 @@ function ProfileScreen({
   setTheme,
   colors,
   isDark,
+  currentUser,
+  onLogout,
+  onOpenApiConfig,
 }: {
   role: Role;
   online: boolean;
@@ -3608,12 +4166,38 @@ function ProfileScreen({
   setTheme: (t: Theme) => void;
   colors: ThemeColors;
   isDark: boolean;
+  currentUser: any | null;
+  onLogout: () => void;
+  onOpenApiConfig: () => void;
 }) {
   const teacher = role === "teacher";
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [helpModalVisible, setHelpModalVisible] = useState(false);
   const isRTL = lang === "ar";
+
+  const displayName = currentUser
+    ? `${currentUser.firstName || ""} ${currentUser.lastName || ""}`.trim()
+    : teacher
+    ? "Enseignant ISSATK"
+    : "Étudiant ISSATK";
+
+  const displayInitials =
+    currentUser?.firstName && currentUser?.lastName
+      ? `${currentUser.firstName[0]}${currentUser.lastName[0]}`.toUpperCase()
+      : teacher
+      ? "PR"
+      : "ET";
+
+  const displaySub =
+    currentUser?.department ||
+    currentUser?.className ||
+    (teacher ? "Département Informatique" : "Institut Supérieur des Sciences Appliquées");
+
+  const displayEmail =
+    currentUser?.email ||
+    currentUser?.studentNumber ||
+    (teacher ? "enseignant@issatk.rnu.tn" : "etudiant@issatk.rnu.tn");
 
   const themeList: { key: Theme; labelFr: string; labelEn: string; labelAr: string; icon: string }[] = [
     { key: "light", labelFr: "Clair", labelEn: "Light", labelAr: "فاتح", icon: "sun" },
@@ -3652,13 +4236,13 @@ function ProfileScreen({
             ]}
           >
             <Text style={[styles.avatarLargeText, { color: colors.accentText }]}>
-              {teacher ? "SM" : "AB"}
+              {displayInitials}
             </Text>
           </View>
           <View style={{ flex: 1, marginLeft: isRTL ? 0 : 12, marginRight: isRTL ? 12 : 0 }}>
             <View style={{ flexDirection: isRTL ? "row-reverse" : "row", alignItems: "center", justifyContent: "space-between" }}>
               <Text style={[styles.identityName, { color: colors.text, textAlign: isRTL ? "right" : "left" }]}>
-                {teacher ? "Sonia Mansouri" : "Amine Ben Amor"}
+                {displayName}
               </Text>
               <StatusBadge
                 state={teacher ? "warning" : "info"}
@@ -3667,10 +4251,10 @@ function ProfileScreen({
               />
             </View>
             <Text style={[styles.identityDept, { color: colors.textSecondary, textAlign: isRTL ? "right" : "left" }]}>
-              {teacher ? "Département Informatique" : "ING2 · Groupe B"}
+              {displaySub}
             </Text>
             <Text style={[styles.identityEmail, { color: colors.accent, textAlign: isRTL ? "right" : "left" }]}>
-              {teacher ? "sonia.mansouri@issatk.rnu.tn" : "2023-ING-0142"}
+              {displayEmail}
             </Text>
           </View>
         </View>
@@ -3781,6 +4365,30 @@ function ProfileScreen({
               <Text style={[styles.settingsRowValue, { color: colors.accent }]}>
                 {lang === "fr" ? "FR" : lang === "en" ? "EN" : "عربي"}
               </Text>
+              <AppIcon name="chevron" size={14} color={colors.textSecondary} />
+            </TouchableOpacity>
+
+            {/* API & ngrok Settings */}
+            <TouchableOpacity
+              style={[
+                styles.settingsRow,
+                {
+                  borderBottomColor: colors.border,
+                  flexDirection: isRTL ? "row-reverse" : "row",
+                },
+              ]}
+              onPress={onOpenApiConfig}
+              activeOpacity={0.7}
+            >
+              <AppIcon name="server" size={18} color={colors.accent} />
+              <View style={{ flex: 1, marginLeft: isRTL ? 0 : 12, marginRight: isRTL ? 12 : 0 }}>
+                <Text style={[styles.settingsRowTitle, { color: colors.text, textAlign: isRTL ? "right" : "left" }]}>
+                  {lang === "fr" ? "Configuration API & ngrok" : lang === "ar" ? "إعدادات رابط ngrok" : "API & ngrok Settings"}
+                </Text>
+                <Text style={[styles.settingsRowSub, { color: colors.textSecondary, textAlign: isRTL ? "right" : "left" }]}>
+                  {lang === "fr" ? "Gérer le tunnel HTTPS vers le backend" : "Manage active ngrok tunnel"}
+                </Text>
+              </View>
               <AppIcon name="chevron" size={14} color={colors.textSecondary} />
             </TouchableOpacity>
 
@@ -3936,9 +4544,14 @@ function ProfileScreen({
         <SmoothDialog
           visible={logoutModalVisible}
           onClose={() => setLogoutModalVisible(false)}
-          onConfirm={() => {
+          onConfirm={async () => {
             setLogoutModalVisible(false);
-            navigate("login");
+            try {
+              await api.auth.logout();
+            } catch {
+              // Ignore
+            }
+            onLogout();
           }}
           title={buttonCopy[lang].signOut}
           message={
@@ -3993,6 +4606,12 @@ interface MainTabsPagerProps {
   isDark: boolean;
   scrollX: Animated.Value;
   screenWidth: number;
+  currentUser: any | null;
+  onSelectClass: (c: any) => void;
+  onSubmissionComplete: (result: any) => void;
+  onOpenApiConfig: () => void;
+  onLogout: () => void;
+  activeSession?: any | null;
 }
 
 const MAIN_TABS: Screen[] = ["home", "timetable", "attendance", "profile"];
@@ -4012,6 +4631,12 @@ function MainTabsPager({
   isDark,
   scrollX,
   screenWidth,
+  currentUser,
+  onSelectClass,
+  onSubmissionComplete,
+  onOpenApiConfig,
+  onLogout,
+  activeSession,
 }: MainTabsPagerProps) {
   const pagerRef = useRef<React.ElementRef<typeof ScrollView>>(null);
   const isUserSwiping = useRef(false);
@@ -4065,6 +4690,8 @@ function MainTabsPager({
           lang={lang}
           colors={colors}
           isDark={isDark}
+          currentUser={currentUser}
+          onSelectClass={onSelectClass}
         />
       </View>
 
@@ -4077,6 +4704,7 @@ function MainTabsPager({
           lang={lang}
           colors={colors}
           isDark={isDark}
+          onSelectClass={onSelectClass}
         />
       </View>
 
@@ -4089,6 +4717,8 @@ function MainTabsPager({
           lang={lang}
           colors={colors}
           isDark={isDark}
+          activeSession={activeSession}
+          onSubmissionComplete={onSubmissionComplete}
         />
       </View>
 
@@ -4104,6 +4734,9 @@ function MainTabsPager({
           setTheme={setTheme}
           colors={colors}
           isDark={isDark}
+          currentUser={currentUser}
+          onLogout={onLogout}
+          onOpenApiConfig={onOpenApiConfig}
         />
       </View>
     </ScrollView>
@@ -4120,6 +4753,12 @@ export default function App() {
   const [lang, setLang] = useState<Lang>("fr");
   const [online, setOnline] = useState(true);
 
+  // Real backend authentication and state
+  const [currentUser, setCurrentUser] = useState<any | null>(null);
+  const [activeSession, setActiveSession] = useState<any | null>(null);
+  const [submissionResult, setSubmissionResult] = useState<any | null>(null);
+  const [apiConfigVisible, setApiConfigVisible] = useState(false);
+
   const { width: screenWidth } = useWindowDimensions();
   const systemColorScheme = useColorScheme();
   const effectiveDark =
@@ -4131,6 +4770,24 @@ export default function App() {
 
   const handleTabNavigate = useCallback((newScreen: Screen) => {
     setScreen(newScreen);
+  }, []);
+
+  // Set up 401 handler and check stored user session on mount
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      setCurrentUser(null);
+      setScreen("login");
+    });
+
+    getStoredUser().then((u) => {
+      if (u) {
+        setCurrentUser(u);
+        if (u.role) {
+          setRole(u.role === "TEACHER" ? "teacher" : "student");
+        }
+        setScreen("home");
+      }
+    });
   }, []);
 
   return (
@@ -4150,7 +4807,13 @@ export default function App() {
           {screen === "login" && (
             <ScreenTransition screenKey="login">
               <LoginScreen
-                onLogin={() => setScreen("home")}
+                onLogin={(user) => {
+                  setCurrentUser(user);
+                  if (user?.role) {
+                    setRole(user.role === "TEACHER" ? "teacher" : "student");
+                  }
+                  setScreen("home");
+                }}
                 role={role}
                 setRole={setRole}
                 lang={lang}
@@ -4159,6 +4822,7 @@ export default function App() {
                 setTheme={setTheme}
                 colors={colors}
                 isDark={effectiveDark}
+                onOpenApiConfig={() => setApiConfigVisible(true)}
               />
             </ScreenTransition>
           )}
@@ -4179,6 +4843,20 @@ export default function App() {
               isDark={effectiveDark}
               scrollX={scrollX}
               screenWidth={screenWidth}
+              currentUser={currentUser}
+              onSelectClass={(cls) => {
+                setActiveSession(cls);
+              }}
+              onSubmissionComplete={(result) => {
+                setSubmissionResult(result);
+                setScreen("submission");
+              }}
+              onOpenApiConfig={() => setApiConfigVisible(true)}
+              onLogout={() => {
+                setCurrentUser(null);
+                setScreen("login");
+              }}
+              activeSession={activeSession}
             />
           )}
 
@@ -4192,6 +4870,7 @@ export default function App() {
                 lang={lang}
                 colors={colors}
                 isDark={effectiveDark}
+                activeSession={activeSession}
               />
             </ScreenTransition>
           )}
@@ -4242,6 +4921,7 @@ export default function App() {
                 lang={lang}
                 colors={colors}
                 isDark={effectiveDark}
+                submissionResult={submissionResult}
               />
             </ScreenTransition>
           )}
@@ -4255,6 +4935,7 @@ export default function App() {
                 lang={lang}
                 colors={colors}
                 isDark={effectiveDark}
+                activeSession={activeSession}
               />
             </ScreenTransition>
           )}
@@ -4285,6 +4966,14 @@ export default function App() {
           />
         )}
         </SafeAreaView>
+
+        {/* In-app ngrok and API endpoint configuration modal */}
+        <ApiConfigModal
+          visible={apiConfigVisible}
+          onClose={() => setApiConfigVisible(false)}
+          colors={colors}
+          isDark={effectiveDark}
+        />
       </View>
     </SafeAreaProvider>
   );

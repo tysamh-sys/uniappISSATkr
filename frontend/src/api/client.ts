@@ -121,7 +121,12 @@ export async function request<T>(
 export const client = {
   get: <T>(path: string, params?: Record<string, any>) => request<T>(path, { method: "GET", params }),
   post: <T>(path: string, body?: any) =>
-    request<T>(path, { method: "POST", body: body !== undefined ? JSON.stringify(body) : undefined }),
+    request<T>(path, {
+      method: "POST",
+      body: body instanceof FormData ? body : body !== undefined ? JSON.stringify(body) : undefined,
+    }),
+  postFormData: <T>(path: string, formData: FormData) =>
+    request<T>(path, { method: "POST", body: formData }),
   put: <T>(path: string, body?: any) =>
     request<T>(path, { method: "PUT", body: body !== undefined ? JSON.stringify(body) : undefined }),
   patch: <T>(path: string, body?: any) =>

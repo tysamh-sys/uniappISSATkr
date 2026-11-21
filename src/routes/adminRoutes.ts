@@ -13,6 +13,7 @@ import * as roomCtrl from '../controllers/admin/roomController.js';
 import * as absenceReasonCtrl from '../controllers/admin/absenceReasonController.js';
 import * as timetableCtrl from '../controllers/admin/timetableController.js';
 import * as dashboardCtrl from '../controllers/admin/dashboardController.js';
+import * as importCtrl from '../controllers/admin/importController.js';
 
 import { createStudentSchema, updateStudentSchema } from '../validators/studentValidators.js';
 import { createTeacherSchema, updateTeacherSchema } from '../validators/teacherValidators.js';
@@ -27,7 +28,21 @@ import {
   confirmTimetableImportSchema,
 } from '../validators/timetableValidators.js';
 
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 15 * 1024 * 1024, // 15 MB limit
+  },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['.xlsx', '.xls', '.csv'];
+    const name = file.originalname.toLowerCase();
+    if (allowed.some((ext) => name.endsWith(ext))) {
+      cb(null, true);
+    } else {
+      cb(new Error('Format de fichier non supporté. Veuillez importer un fichier Excel (.xlsx, .xls) ou CSV.'));
+    }
+  },
+});
 const router = Router();
 
 // Enforce Admin Authentication & Role
@@ -93,5 +108,13 @@ router.delete('/timetable/entries/:id', timetableCtrl.deleteTimetableEntryHandle
 // --- Timetable CSV/Excel Import Pipeline ---
 router.post('/timetable/import/preview', upload.single('file'), timetableCtrl.importPreviewHandler);
 router.post('/timetable/import/confirm', validateRequest(confirmTimetableImportSchema), timetableCtrl.importConfirmHandler);
+
+// --- Flexible University Data Import System (Admin Only) ---
+router.post('/import/analyze', upload.single('file'), importCtrl.analyzeImportFileHandler);
+router.post('/import/preview', upload.single('file'), importCtrl.previewImportHandler);
+router.post('/import/execute', upload.single('file'), importCtrl.executeImportHandler);
+router.get('/import/history', importCtrl.getImportHistoryHandler);
+router.get('/import/history/:id', importCtrl.getImportHistoryDetailHandler);
+router.get('/import/sample-dataset', importCtrl.downloadSampleDatasetHandler);
 
 export default router;

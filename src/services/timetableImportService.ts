@@ -25,29 +25,49 @@ export interface ImportedRowPreview {
 
 export function parseDayOfWeek(dayStr: string): DayOfWeek | null {
   if (!dayStr) return null;
-  const upper = dayStr.trim().toUpperCase();
+  const upper = dayStr.trim().toUpperCase().replace(/\.$/, '');
   const map: Record<string, DayOfWeek> = {
     MONDAY: DayOfWeek.MONDAY,
     MON: DayOfWeek.MONDAY,
     LUNDI: DayOfWeek.MONDAY,
+    LUN: DayOfWeek.MONDAY,
+    '1': DayOfWeek.MONDAY,
+
     TUESDAY: DayOfWeek.TUESDAY,
     TUE: DayOfWeek.TUESDAY,
     MARDI: DayOfWeek.TUESDAY,
+    MAR: DayOfWeek.TUESDAY,
+    '2': DayOfWeek.TUESDAY,
+
     WEDNESDAY: DayOfWeek.WEDNESDAY,
     WED: DayOfWeek.WEDNESDAY,
     MERCREDI: DayOfWeek.WEDNESDAY,
+    MER: DayOfWeek.WEDNESDAY,
+    '3': DayOfWeek.WEDNESDAY,
+
     THURSDAY: DayOfWeek.THURSDAY,
     THU: DayOfWeek.THURSDAY,
     JEUDI: DayOfWeek.THURSDAY,
+    JEU: DayOfWeek.THURSDAY,
+    '4': DayOfWeek.THURSDAY,
+
     FRIDAY: DayOfWeek.FRIDAY,
     FRI: DayOfWeek.FRIDAY,
     VENDREDI: DayOfWeek.FRIDAY,
+    VEN: DayOfWeek.FRIDAY,
+    '5': DayOfWeek.FRIDAY,
+
     SATURDAY: DayOfWeek.SATURDAY,
     SAT: DayOfWeek.SATURDAY,
     SAMEDI: DayOfWeek.SATURDAY,
+    SAM: DayOfWeek.SATURDAY,
+    '6': DayOfWeek.SATURDAY,
+
     SUNDAY: DayOfWeek.SUNDAY,
     SUN: DayOfWeek.SUNDAY,
     DIMANCHE: DayOfWeek.SUNDAY,
+    DIM: DayOfWeek.SUNDAY,
+    '7': DayOfWeek.SUNDAY,
   };
   return map[upper] || null;
 }
