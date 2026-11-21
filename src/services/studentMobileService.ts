@@ -322,6 +322,7 @@ export async function getStudentAttendanceSummaryAndRecords(studentId: string, f
   let absentCount = 0;
   let justifiedCount = 0;
   let pendingCount = 0;
+  let rejectedCount = 0;
 
   const recordsList = allRecords.map((r) => {
     let statusLabel = 'Présent';
@@ -346,6 +347,11 @@ export async function getStudentAttendanceSummaryAndRecords(studentId: string, f
         statusLabel = 'En attente';
         tone = 'warning';
         recType = 'pending';
+      } else if (r.certificate && r.certificate.status === CertificateStatus.REJECTED) {
+        rejectedCount++;
+        statusLabel = 'Refusée';
+        tone = 'danger';
+        recType = 'absent';
       } else {
         statusLabel = 'Absent';
         tone = 'danger';
@@ -422,8 +428,24 @@ export async function submitStudentJustification(
   const rand = Math.floor(100 + Math.random() * 900);
   const reference = `JUS-${yy}${mm}${dd}-${rand}`;
 
-  const start = input.startDate ? new Date(input.startDate) : now;
-  const end = input.endDate ? new Date(input.endDate) : new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  // Verify ownership if recordId is provided
+  let recordToLink: any = null;
+  if (input.recordId) {
+    recordToLink = await prisma.attendanceRecord.findFirst({
+      where: { id: input.recordId, studentId: student.id },
+      include: { session: true },
+    });
+    if (!recordToLink) {
+      throw new Error('Absence introuvable ou non associée à votre compte étudiant.');
+    }
+  }
+
+  const start = input.startDate
+    ? new Date(input.startDate)
+    : (recordToLink?.session?.date ? new Date(recordToLink.session.date) : now);
+  const end = input.endDate
+    ? new Date(input.endDate)
+    : (recordToLink?.session?.date ? new Date(recordToLink.session.date) : new Date(now.getTime() + 24 * 60 * 60 * 1000));
 
   const cert = await prisma.certificate.create({
     data: {
@@ -443,7 +465,12 @@ export async function submitStudentJustification(
   });
 
   // Link to record if recordId or sessionId provided
-  if (input.recordId) {
+  if (recordToLink) {
+    await prisma.attendanceRecord.update({
+      where: { id: recordToLink.id },
+      data: { certificateId: cert.id },
+    });
+  } else if (input.recordId) {
     await prisma.attendanceRecord.update({
       where: { id: input.recordId },
       data: { certificateId: cert.id },

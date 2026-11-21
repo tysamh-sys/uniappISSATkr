@@ -1,4 +1,7 @@
-import React, { useMemo, useState, useRef, useEffect, useCallback } from "react";
+﻿import React, { useMemo, useState, useRef, useEffect, useCallback } from "react";
+import * as ImagePicker from "expo-image-picker";
+import * as DocumentPicker from "expo-document-picker";
+import * as FileSystem from "expo-file-system";
 import {
   View,
   Text,
@@ -2457,6 +2460,7 @@ function AttendanceScreen({
   isDark: boolean;
   activeSession?: any | null;
   onSubmissionComplete: (result: any) => void;
+  setSelectedAbsenceRecordId?: (id: string | null) => void;
 }) {
   const isRTL = lang === "ar";
 
@@ -2711,6 +2715,40 @@ function AttendanceScreen({
                       </Text>
                     </View>
                     <StatusBadge state={r.tone || "neutral"} label={r.status} colors={colors} />
+                    {(r.tone === "danger" || r.tone === "warning") && !r.certificateReference && (
+                      <TouchableOpacity
+                        style={{
+                          marginTop: 6,
+                          paddingHorizontal: 10,
+                          paddingVertical: 4,
+                          backgroundColor: colors.accentSoft,
+                          borderRadius: 6,
+                          alignSelf: "flex-start",
+                        }}
+                        onPress={() => {
+                          setSelectedAbsenceRecordId(r.id);
+                          navigate("scanner");
+                        }}
+                      >
+                        <Text style={{ fontSize: 11, color: colors.accent, fontWeight: "600" }}>
+                          Justifier
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    {r.certificateReference && (
+                      <View style={{ marginTop: 6, flexDirection: "row", alignItems: "center", gap: 4 }}>
+                        <Text style={{ fontSize: 11, color:
+                          r.certificateStatus === "ACCEPTED" ? colors.success :
+                          r.certificateStatus === "REJECTED" ? colors.danger :
+                          colors.warning,
+                          fontWeight: "600"
+                        }}>
+                          {r.certificateStatus === "ACCEPTED" ? "✅ Valide" :
+                           r.certificateStatus === "REJECTED" ? "❌ Refuse" :
+                           "🕐 En attente"}
+                        </Text>
+                      </View>
+                    )}
                   </View>
                 ))}
               </View>
@@ -3414,12 +3452,85 @@ function ScannerScreen({
   navigate,
   lang,
   colors,
+  setCapturedDocument,
+  selectedAbsenceRecordId,
 }: {
   online: boolean;
   navigate: (s: Screen) => void;
   lang: Lang;
   colors: ThemeColors;
+  setCapturedDocument: (doc: { uri: string; base64: string; mimeType: string; fileName: string; fileSize: number } | null) => void;
+  selectedAbsenceRecordId: string | null;
 }) {
+  const [cameraPermission, requestCameraPermission] = ImagePicker.useCameraPermissions();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleCapture = async () => {
+    setIsLoading(true);
+    try {
+      if (!cameraPermission?.granted) {
+        const result = await requestCameraPermission();
+        if (!result.granted) {
+          Alert.alert(
+            "Permission refusée",
+            "L’accès à la caméra est nécessaire pour scanner votre certificat."
+          );
+          return;
+        }
+      }
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.8,
+        base64: true,
+        allowsEditing: true,
+        aspect: [3, 4],
+      });
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        setCapturedDocument({
+          uri: asset.uri,
+          base64: asset.base64 || "",
+          mimeType: "image/jpeg",
+          fileName: `certificat_${Date.now()}.jpg`,
+          fileSize: asset.fileSize || 0,
+        });
+        navigate("preview");
+      }
+    } catch (err: any) {
+      Alert.alert("Erreur", err.message || "Impossible d’ouvrir la caméra.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePickFile = async () => {
+    setIsLoading(true);
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ["image/*", "application/pdf"],
+        copyToCacheDirectory: true,
+      });
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        const base64 = await FileSystem.readAsStringAsync(asset.uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        setCapturedDocument({
+          uri: asset.uri,
+          base64,
+          mimeType: asset.mimeType || "application/octet-stream",
+          fileName: asset.name,
+          fileSize: asset.size || 0,
+        });
+        navigate("preview");
+      }
+    } catch (err: any) {
+      Alert.alert("Erreur", err.message || "Impossible de sélectionner le fichier.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <View style={[styles.scannerScreen, { backgroundColor: "transparent" }]}>
       <View style={styles.scannerHeaderWrap}>
@@ -3455,21 +3566,31 @@ function ScannerScreen({
           </View>
         </View>
 
-        <Text style={styles.cameraInstruction}>Placez le document dans le cadre</Text>
+        <Text style={styles.cameraInstruction}>
+          {selectedAbsenceRecordId
+            ? "Scannez le certificat pour justifier cette absence"
+            : "Placez le document dans le cadre"}
+        </Text>
       </View>
 
       <View style={styles.cameraControls}>
         <PressableScale
-          style={styles.galleryButton}
-          onPress={() => navigate("preview")}
+          style={[styles.galleryButton, isLoading && { opacity: 0.5 }]}
+          onPress={handlePickFile}
+          disabled={isLoading}
         >
           <AppIcon name="file" size={20} color="#ffffff" />
         </PressableScale>
         <PressableScale
-          style={styles.captureButton}
-          onPress={() => navigate("preview")}
+          style={[styles.captureButton, isLoading && { opacity: 0.5 }]}
+          onPress={handleCapture}
+          disabled={isLoading}
         >
-          <View style={styles.captureInnerCircle} />
+          {isLoading ? (
+            <ActivityIndicator color="#ffffff" />
+          ) : (
+            <View style={styles.captureInnerCircle} />
+          )}
         </PressableScale>
         <Text style={styles.pageCountBadge}>1 page</Text>
       </View>
@@ -3486,13 +3607,51 @@ function DocumentPreviewScreen({
   lang,
   colors,
   isDark,
+  capturedDocument,
+  selectedAbsenceRecordId,
+  onSubmissionComplete,
 }: {
   online: boolean;
   navigate: (s: Screen) => void;
   lang: Lang;
   colors: ThemeColors;
   isDark: boolean;
+  capturedDocument: { uri: string; base64: string; mimeType: string; fileName: string; fileSize: number } | null;
+  selectedAbsenceRecordId: string | null;
+  onSubmissionComplete: (result: any) => void;
 }) {
+  const [sending, setSending] = useState(false);
+
+  const handleSend = async () => {
+    if (!capturedDocument) {
+      Alert.alert("Aucun document", "Veuillez d’abord scanner ou sélectionner un document.");
+      return;
+    }
+    setSending(true);
+    try {
+      const result = await api.student.submitJustification({
+        recordId: selectedAbsenceRecordId || undefined,
+        fileData: `data:${capturedDocument.mimeType};base64,${capturedDocument.base64}`,
+        fileName: capturedDocument.fileName,
+        fileType: capturedDocument.mimeType,
+        fileSize: capturedDocument.fileSize,
+        reason: "Certificat médical transmis via application mobile",
+      });
+      onSubmissionComplete({
+        title: "Certificat envoyé",
+        subtitle: `Votre justificatif réf. ${result.reference} est en cours d’examen.`,
+        reference: result.reference,
+        status: "En examen",
+        dateFormatted: new Date().toLocaleString("fr-FR"),
+      });
+      navigate("submission");
+    } catch (err: any) {
+      Alert.alert("Erreur", err.message || "Impossible d’envoyer le justificatif.");
+    } finally {
+      setSending(false);
+    }
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: "transparent" }}>
       <AppHeader
@@ -3515,23 +3674,42 @@ function DocumentPreviewScreen({
             },
           ]}
         >
-          <View style={[styles.paperLogo, { borderColor: colors.primary }]}>
-            <Text style={[styles.paperLogoText, { color: colors.primary }]}>CENTRE MÉDICAL</Text>
-          </View>
-          <Text style={[styles.paperDocTitle, { color: colors.text }]}>CERTIFICAT MÉDICAL</Text>
-          <View style={styles.paperTextLines}>
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <View
-                key={i}
-                style={[
-                  styles.paperLine,
-                  { backgroundColor: isDark ? colors.surfaceMuted : "#E4EAF1" },
-                  i % 3 === 0 && { width: "65%" },
-                ]}
-              />
-            ))}
-          </View>
-          <Text style={[styles.paperSignature, { color: colors.textSecondary }]}>Signature et cachet</Text>
+          {capturedDocument?.mimeType?.startsWith("image/") ? (
+            <Image
+              source={{ uri: capturedDocument.uri }}
+              style={{ width: "100%", height: 420, resizeMode: "contain", borderRadius: 8 }}
+            />
+          ) : capturedDocument?.mimeType === "application/pdf" ? (
+            <View style={{ padding: 24, alignItems: "center" }}>
+              <AppIcon name="file" size={48} color={colors.primary} />
+              <Text style={[styles.paperDocTitle, { color: colors.text, marginTop: 12 }]}>
+                {capturedDocument.fileName}
+              </Text>
+              <Text style={[styles.recordMeta, { color: colors.textSecondary }]}>
+                Fichier PDF sélectionné
+              </Text>
+            </View>
+          ) : (
+            <>
+              <View style={[styles.paperLogo, { borderColor: colors.primary }]}>
+                <Text style={[styles.paperLogoText, { color: colors.primary }]}>CENTRE MÉDICAL</Text>
+              </View>
+              <Text style={[styles.paperDocTitle, { color: colors.text }]}>CERTIFICAT MÉDICAL</Text>
+              <View style={styles.paperTextLines}>
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <View
+                    key={i}
+                    style={[
+                      styles.paperLine,
+                      { backgroundColor: isDark ? colors.surfaceMuted : "#E4EAF1" },
+                      i % 3 === 0 && { width: "65%" },
+                    ]}
+                  />
+                ))}
+              </View>
+              <Text style={[styles.paperSignature, { color: colors.textSecondary }]}>Signature et cachet</Text>
+            </>
+          )}
         </View>
 
         <View style={styles.editToolsRow}>
@@ -3540,23 +3718,11 @@ function DocumentPreviewScreen({
               styles.editToolBtn,
               { backgroundColor: colors.surface, borderColor: colors.border },
             ]}
-            onPress={() => Alert.alert("Recadrer", "Mode recadrage activé")}
+            onPress={() => navigate("scanner")}
           >
             <AppIcon name="camera" size={16} color={colors.text} />
             <Text style={[styles.editToolBtnText, { color: colors.text }]}>
-              Recadrer
-            </Text>
-          </PressableScale>
-          <PressableScale
-            style={[
-              styles.editToolBtn,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-            ]}
-            onPress={() => Alert.alert("Ajuster", "Contraste et luminosité ajustés")}
-          >
-            <AppIcon name="more" size={16} color={colors.text} />
-            <Text style={[styles.editToolBtnText, { color: colors.text }]}>
-              Ajuster
+              Rescanner
             </Text>
           </PressableScale>
           <PressableScale
@@ -3568,7 +3734,7 @@ function DocumentPreviewScreen({
           >
             <AppIcon name="file" size={16} color={colors.text} />
             <Text style={[styles.editToolBtnText, { color: colors.text }]}>
-              Ajouter
+              Changer
             </Text>
           </PressableScale>
         </View>
@@ -3577,7 +3743,7 @@ function DocumentPreviewScreen({
           <View style={[styles.draftNotice, { backgroundColor: colors.warningSoft }]}>
             <AppIcon name="wifiOff" size={16} color={colors.warning} />
             <Text style={[styles.draftNoticeText, { color: colors.warning }]}>
-              Le document sera enregistré comme brouillon non envoyé.
+              Connexion requise pour envoyer le justificatif.
             </Text>
           </View>
         )}
@@ -3585,13 +3751,18 @@ function DocumentPreviewScreen({
         <PressableScale
           style={[
             styles.primaryButton,
-            { backgroundColor: colors.primaryStrong, marginTop: 14 },
+            { backgroundColor: colors.primaryStrong, marginTop: 14, opacity: sending ? 0.6 : 1 },
           ]}
-          onPress={() => navigate("submission")}
+          onPress={online ? handleSend : undefined}
+          disabled={sending || !online}
         >
-          <Text style={styles.primaryButtonText}>
-            {online ? "Confirmer et envoyer" : "Enregistrer le brouillon"}
-          </Text>
+          {sending ? (
+            <ActivityIndicator color="#ffffff" />
+          ) : (
+            <Text style={styles.primaryButtonText}>
+              {online ? "Confirmer et envoyer" : "Connexion requise"}
+            </Text>
+          )}
         </PressableScale>
       </ScrollView>
     </View>
@@ -4609,6 +4780,7 @@ interface MainTabsPagerProps {
   currentUser: any | null;
   onSelectClass: (c: any) => void;
   onSubmissionComplete: (result: any) => void;
+  setSelectedAbsenceRecordId: (id: string | null) => void;
   onOpenApiConfig: () => void;
   onLogout: () => void;
   activeSession?: any | null;
@@ -4618,6 +4790,7 @@ const MAIN_TABS: Screen[] = ["home", "timetable", "attendance", "profile"];
 
 function MainTabsPager({
   currentTab,
+  setSelectedAbsenceRecordId,
   onTabChange,
   role,
   online,
@@ -4719,6 +4892,7 @@ function MainTabsPager({
           isDark={isDark}
           activeSession={activeSession}
           onSubmissionComplete={onSubmissionComplete}
+          setSelectedAbsenceRecordId={setSelectedAbsenceRecordId}
         />
       </View>
 
@@ -4758,6 +4932,16 @@ export default function App() {
   const [activeSession, setActiveSession] = useState<any | null>(null);
   const [submissionResult, setSubmissionResult] = useState<any | null>(null);
   const [apiConfigVisible, setApiConfigVisible] = useState(false);
+
+  // Certificate scan shared state
+  const [capturedDocument, setCapturedDocument] = useState<{
+    uri: string;
+    base64: string;
+    mimeType: string;
+    fileName: string;
+    fileSize: number;
+  } | null>(null);
+  const [selectedAbsenceRecordId, setSelectedAbsenceRecordId] = useState<string | null>(null);
 
   const { width: screenWidth } = useWindowDimensions();
   const systemColorScheme = useColorScheme();
@@ -4847,6 +5031,7 @@ export default function App() {
               onSelectClass={(cls) => {
                 setActiveSession(cls);
               }}
+              setSelectedAbsenceRecordId={setSelectedAbsenceRecordId}
               onSubmissionComplete={(result) => {
                 setSubmissionResult(result);
                 setScreen("submission");
@@ -4896,6 +5081,8 @@ export default function App() {
                 navigate={setScreen}
                 lang={lang}
                 colors={colors}
+                setCapturedDocument={setCapturedDocument}
+                selectedAbsenceRecordId={selectedAbsenceRecordId}
               />
             </ScreenTransition>
           )}
@@ -4908,6 +5095,13 @@ export default function App() {
                 lang={lang}
                 colors={colors}
                 isDark={effectiveDark}
+                capturedDocument={capturedDocument}
+                selectedAbsenceRecordId={selectedAbsenceRecordId}
+                onSubmissionComplete={(result) => {
+                  setSubmissionResult(result);
+                  setCapturedDocument(null);
+                  setSelectedAbsenceRecordId(null);
+                }}
               />
             </ScreenTransition>
           )}

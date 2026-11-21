@@ -1,4 +1,4 @@
-import * as SecureStore from 'expo-secure-store';
+﻿import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
 /* ==========================================================================
@@ -403,6 +403,8 @@ export const api = {
       endDate?: string;
       fileData?: string;
       fileName?: string;
+      fileType?: string;
+      fileSize?: number;
     }): Promise<any> {
       return await request('/student/justify', {
         method: 'POST',
