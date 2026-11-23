@@ -5179,7 +5179,8 @@ export default function App() {
       if (u) {
         setCurrentUser(u);
         if (u.role) {
-          setRole(u.role === "TEACHER" ? "teacher" : "student");
+          const r = String(u.role).toLowerCase();
+          setRole(r === "teacher" ? "teacher" : "student");
         }
         setScreen("home");
       }
@@ -5206,7 +5207,8 @@ export default function App() {
                 onLogin={(user) => {
                   setCurrentUser(user);
                   if (user?.role) {
-                    setRole(user.role === "TEACHER" ? "teacher" : "student");
+                    const r = String(user.role).toLowerCase();
+                    setRole(r === "teacher" ? "teacher" : "student");
                   }
                   setScreen("home");
                 }}
