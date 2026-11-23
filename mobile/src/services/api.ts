@@ -12,7 +12,7 @@ const STORAGE_KEY_USER = 'issatk_auth_user';
 const STORAGE_KEY_API_URL = 'issatk_custom_api_url';
 
 // Default base URL from env or fallback ngrok placeholder
-const FALLBACK_API_URL = 'https://YOUR-NGROK-DOMAIN.ngrok-free.app/api';
+const FALLBACK_API_URL = 'http://172.16.2.107:5000/api';
 export const DEFAULT_API_URL = process.env.EXPO_PUBLIC_API_URL || FALLBACK_API_URL;
 
 // In-memory fallback if SecureStore fails or runs on web

@@ -2173,6 +2173,50 @@ function HomeScreen({
             <AppIcon name="chevron" size={18} color={colors.textSecondary} />
           </PressableScale>
         )}
+
+        {/* Student Quick Scan Certificate Banner */}
+        {role === "student" && (
+          <PressableScale
+            style={[
+              styles.requestStrip,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.accent,
+                borderWidth: 1.5,
+                shadowColor: isDark ? "#000" : "#102B55",
+                marginTop: 10,
+              },
+            ]}
+            onPress={() => navigate("scanner")}
+          >
+            <View
+              style={[
+                styles.requestIcon,
+                { backgroundColor: colors.accentSoft },
+              ]}
+            >
+              <AppIcon name="camera" size={20} color={colors.accent} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.requestStripTitle, { color: colors.text, fontWeight: "700" }]}>
+                {lang === "fr" ? "Scanner un certificat" : lang === "ar" ? "مسح شهادة طبية" : "Scan Certificate"}
+              </Text>
+              <Text
+                style={[
+                  styles.requestStripSub,
+                  { color: colors.textSecondary },
+                ]}
+              >
+                {lang === "fr"
+                  ? "Prendre en photo ou importer un justificatif d’absence"
+                  : lang === "ar"
+                  ? "تصوير أو إرفاق شهادة تبرير غياب رسمي"
+                  : "Photograph or upload absence medical document"}
+              </Text>
+            </View>
+            <AppIcon name="chevron" size={18} color={colors.accent} />
+          </PressableScale>
+        )}
       </ScrollView>
     </View>
   );
@@ -2450,6 +2494,7 @@ function AttendanceScreen({
   isDark,
   activeSession,
   onSubmissionComplete,
+  setSelectedAbsenceRecordId,
 }: {
   role: Role;
   online: boolean;
@@ -2607,6 +2652,51 @@ function AttendanceScreen({
             </View>
           </View>
 
+          {/* Top Prominent Scan Action Card */}
+          <PressableScale
+            style={[
+              styles.actionCard,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.accent,
+                borderWidth: 1.5,
+                shadowColor: isDark ? "#000" : "#102B55",
+                marginBottom: 12,
+              },
+            ]}
+            onPress={() => {
+              if (setSelectedAbsenceRecordId) setSelectedAbsenceRecordId(null);
+              navigate("scanner");
+            }}
+          >
+            <View
+              style={[
+                styles.actionIcon,
+                { backgroundColor: colors.accentSoft },
+              ]}
+            >
+              <AppIcon name="camera" size={20} color={colors.accent} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.actionCardTitle, { color: colors.text, fontSize: 13.5, fontWeight: "700" }]}>
+                {lang === "fr" ? "Scanner un justificatif médical" : lang === "ar" ? "مسح شهادة طبية" : "Scan Medical Certificate"}
+              </Text>
+              <Text
+                style={[
+                  styles.actionCardSub,
+                  { color: colors.textSecondary },
+                ]}
+              >
+                {lang === "fr"
+                  ? "Numériser avec la caméra ou choisir un fichier PDF"
+                  : lang === "ar"
+                  ? "تصوير بالكاميرا أو إرفاق ملف PDF"
+                  : "Scan with camera or upload PDF"}
+              </Text>
+            </View>
+            <AppIcon name="chevron" size={18} color={colors.accent} />
+          </PressableScale>
+
           {/* Filter Chips */}
           <View style={styles.filterRow}>
             {(["Toutes", "Absences", "En attente"] as const).map((tab) => {
@@ -2713,42 +2803,53 @@ function AttendanceScreen({
                       <Text style={[styles.recordMeta, { color: colors.textSecondary }]}>
                         {r.date} · {r.timeSlot || "08:30–10:00"}
                       </Text>
+
+                      {(r.tone === "danger" || r.tone === "warning" || r.status === "Absent") && !r.certificateReference && (
+                        <TouchableOpacity
+                          activeOpacity={0.8}
+                          style={{
+                            marginTop: 8,
+                            paddingHorizontal: 10,
+                            paddingVertical: 5,
+                            backgroundColor: colors.accent,
+                            borderRadius: 8,
+                            alignSelf: "flex-start",
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 5,
+                          }}
+                          onPress={() => {
+                            if (setSelectedAbsenceRecordId) setSelectedAbsenceRecordId(r.id);
+                            navigate("scanner");
+                          }}
+                        >
+                          <AppIcon name="camera" size={13} color="#ffffff" />
+                          <Text style={{ fontSize: 11, color: "#ffffff", fontWeight: "700" }}>
+                            {lang === "fr" ? "Justifier l’absence" : lang === "ar" ? "تبرير الغياب" : "Justify Absence"}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+
+                      {r.certificateReference && (
+                        <View style={{ marginTop: 6, flexDirection: "row", alignItems: "center", gap: 5 }}>
+                          <Text style={{
+                            fontSize: 11,
+                            fontWeight: "700",
+                            color:
+                              r.certificateStatus === "ACCEPTED" ? colors.success :
+                              r.certificateStatus === "REJECTED" ? colors.danger :
+                              colors.warning,
+                          }}>
+                            {r.certificateStatus === "ACCEPTED"
+                              ? (lang === "fr" ? "✅ Justifiée (Validée)" : "✅ Validated")
+                              : r.certificateStatus === "REJECTED"
+                              ? (lang === "fr" ? "❌ Justificatif refusé" : "❌ Rejected")
+                              : (lang === "fr" ? `🕐 En examen (${r.certificateReference})` : `🕐 Pending (${r.certificateReference})`)}
+                          </Text>
+                        </View>
+                      )}
                     </View>
                     <StatusBadge state={r.tone || "neutral"} label={r.status} colors={colors} />
-                    {(r.tone === "danger" || r.tone === "warning") && !r.certificateReference && (
-                      <TouchableOpacity
-                        style={{
-                          marginTop: 6,
-                          paddingHorizontal: 10,
-                          paddingVertical: 4,
-                          backgroundColor: colors.accentSoft,
-                          borderRadius: 6,
-                          alignSelf: "flex-start",
-                        }}
-                        onPress={() => {
-                          setSelectedAbsenceRecordId(r.id);
-                          navigate("scanner");
-                        }}
-                      >
-                        <Text style={{ fontSize: 11, color: colors.accent, fontWeight: "600" }}>
-                          Justifier
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-                    {r.certificateReference && (
-                      <View style={{ marginTop: 6, flexDirection: "row", alignItems: "center", gap: 4 }}>
-                        <Text style={{ fontSize: 11, color:
-                          r.certificateStatus === "ACCEPTED" ? colors.success :
-                          r.certificateStatus === "REJECTED" ? colors.danger :
-                          colors.warning,
-                          fontWeight: "600"
-                        }}>
-                          {r.certificateStatus === "ACCEPTED" ? "✅ Valide" :
-                           r.certificateStatus === "REJECTED" ? "❌ Refuse" :
-                           "🕐 En attente"}
-                        </Text>
-                      </View>
-                    )}
                   </View>
                 ))}
               </View>
@@ -3462,77 +3563,123 @@ function ScannerScreen({
   setCapturedDocument: (doc: { uri: string; base64: string; mimeType: string; fileName: string; fileSize: number } | null) => void;
   selectedAbsenceRecordId: string | null;
 }) {
-  const [cameraPermission, requestCameraPermission] = ImagePicker.useCameraPermissions();
   const [isLoading, setIsLoading] = useState(false);
 
+  // 1. Take Photo with Camera
   const handleCapture = async () => {
     setIsLoading(true);
     try {
-      if (!cameraPermission?.granted) {
-        const result = await requestCameraPermission();
-        if (!result.granted) {
-          Alert.alert(
-            "Permission refusée",
-            "L’accès à la caméra est nécessaire pour scanner votre certificat."
-          );
-          return;
-        }
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert(
+          "Permission refusée",
+          "L’accès à la caméra est nécessaire pour prendre en photo votre certificat médical."
+        );
+        return;
       }
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.8,
+        quality: 0.7,
         base64: true,
         allowsEditing: true,
-        aspect: [3, 4],
       });
-      if (!result.canceled && result.assets[0]) {
+      if (!result.canceled && result.assets && result.assets[0]) {
         const asset = result.assets[0];
+        let b64 = asset.base64;
+        if (!b64) {
+          b64 = await FileSystem.readAsStringAsync(asset.uri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+        }
         setCapturedDocument({
           uri: asset.uri,
-          base64: asset.base64 || "",
+          base64: b64 || "",
           mimeType: "image/jpeg",
           fileName: `certificat_${Date.now()}.jpg`,
-          fileSize: asset.fileSize || 0,
+          fileSize: asset.fileSize || (b64 ? Math.round((b64.length * 3) / 4) : 0),
         });
         navigate("preview");
       }
     } catch (err: any) {
-      Alert.alert("Erreur", err.message || "Impossible d’ouvrir la caméra.");
+      Alert.alert("Erreur Caméra", err.message || "Impossible d’ouvrir l’appareil photo.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handlePickFile = async () => {
+  // 2. Pick Image from Gallery
+  const handlePickGallery = async () => {
     setIsLoading(true);
     try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ["image/*", "application/pdf"],
-        copyToCacheDirectory: true,
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert(
+          "Permission refusée",
+          "L’accès aux photos est nécessaire pour sélectionner votre justificatif."
+        );
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        quality: 0.7,
+        base64: true,
+        allowsEditing: true,
       });
-      if (!result.canceled && result.assets[0]) {
+      if (!result.canceled && result.assets && result.assets[0]) {
         const asset = result.assets[0];
-        const base64 = await FileSystem.readAsStringAsync(asset.uri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
+        let b64 = asset.base64;
+        if (!b64) {
+          b64 = await FileSystem.readAsStringAsync(asset.uri, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+        }
         setCapturedDocument({
           uri: asset.uri,
-          base64,
-          mimeType: asset.mimeType || "application/octet-stream",
-          fileName: asset.name,
-          fileSize: asset.size || 0,
+          base64: b64 || "",
+          mimeType: asset.mimeType || "image/jpeg",
+          fileName: asset.fileName || `certificat_${Date.now()}.jpg`,
+          fileSize: asset.fileSize || (b64 ? Math.round((b64.length * 3) / 4) : 0),
         });
         navigate("preview");
       }
     } catch (err: any) {
-      Alert.alert("Erreur", err.message || "Impossible de sélectionner le fichier.");
+      Alert.alert("Erreur Galerie", err.message || "Impossible de sélectionner l’image.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 3. Pick Document (PDF or image)
+  const handlePickFile = async () => {
+    setIsLoading(true);
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ["application/pdf", "image/*"],
+        copyToCacheDirectory: true,
+      });
+      if (!result.canceled && result.assets && result.assets[0]) {
+        const asset = result.assets[0];
+        const b64 = await FileSystem.readAsStringAsync(asset.uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        const isPdf = (asset.name || "").toLowerCase().endsWith(".pdf") || asset.mimeType === "application/pdf";
+        setCapturedDocument({
+          uri: asset.uri,
+          base64: b64,
+          mimeType: isPdf ? "application/pdf" : (asset.mimeType || "image/jpeg"),
+          fileName: asset.name,
+          fileSize: asset.size || (b64 ? Math.round((b64.length * 3) / 4) : 0),
+        });
+        navigate("preview");
+      }
+    } catch (err: any) {
+      Alert.alert("Erreur Fichier", err.message || "Impossible d’importer le document.");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <View style={[styles.scannerScreen, { backgroundColor: "transparent" }]}>
+    <View style={[styles.scannerScreen, { backgroundColor: "#0F172A" }]}>
+      {/* Header */}
       <View style={styles.scannerHeaderWrap}>
         <View style={styles.scannerHeader}>
           <PressableScale
@@ -3543,64 +3690,129 @@ function ScannerScreen({
           </PressableScale>
           <View style={{ flex: 1, marginLeft: 8 }}>
             <Text style={styles.scannerEyebrow}>Justificatif d’absence</Text>
-            <Text style={styles.scannerHeaderTitle}>Scanner le certificat</Text>
+            <Text style={styles.scannerHeaderTitle}>
+              {selectedAbsenceRecordId ? "Justifier l’absence" : "Scanner le certificat"}
+            </Text>
           </View>
         </View>
       </View>
 
-      <View style={styles.cameraView}>
-        <View style={styles.scanGuides}>
-          <View style={[styles.cornerGuide, styles.guideTL]} />
-          <View style={[styles.cornerGuide, styles.guideTR]} />
-          <View style={[styles.cornerGuide, styles.guideBL]} />
-          <View style={[styles.cornerGuide, styles.guideBR]} />
-        </View>
-
-        <View style={styles.documentSample}>
-          <View style={styles.docHead} />
-          <View style={[styles.docLine, styles.docLineWide]} />
-          <View style={styles.docLine} />
-          <View style={[styles.docLine, styles.docLineWide]} />
-          <View style={styles.docStamp}>
-            <Text style={styles.docStampText}>CERTIFICAT</Text>
-          </View>
-        </View>
-
-        <Text style={styles.cameraInstruction}>
-          {selectedAbsenceRecordId
-            ? "Scannez le certificat pour justifier cette absence"
-            : "Placez le document dans le cadre"}
-        </Text>
-      </View>
-
-      <View style={styles.cameraControls}>
-        <PressableScale
-          style={[styles.galleryButton, isLoading && { opacity: 0.5 }]}
-          onPress={handlePickFile}
-          disabled={isLoading}
-        >
-          <AppIcon name="file" size={20} color="#ffffff" />
-        </PressableScale>
-        <PressableScale
-          style={[styles.captureButton, isLoading && { opacity: 0.5 }]}
+      {/* Main Interactive Scanner Area */}
+      <View style={{ flex: 1, paddingHorizontal: 20, justifyContent: "space-between", paddingBottom: 20 }}>
+        {/* Viewfinder Target */}
+        <TouchableOpacity
+          activeOpacity={0.85}
           onPress={handleCapture}
-          disabled={isLoading}
+          style={{
+            height: 280,
+            borderRadius: 20,
+            borderWidth: 2,
+            borderColor: "rgba(255, 255, 255, 0.3)",
+            borderStyle: "dashed",
+            backgroundColor: "rgba(255, 255, 255, 0.05)",
+            justifyContent: "center",
+            alignItems: "center",
+            position: "relative",
+            marginTop: 10,
+          }}
         >
-          {isLoading ? (
-            <ActivityIndicator color="#ffffff" />
-          ) : (
-            <View style={styles.captureInnerCircle} />
-          )}
-        </PressableScale>
-        <Text style={styles.pageCountBadge}>1 page</Text>
+          {/* Corner Guides */}
+          <View style={[styles.cornerGuide, styles.guideTL, { borderColor: colors.accent }]} />
+          <View style={[styles.cornerGuide, styles.guideTR, { borderColor: colors.accent }]} />
+          <View style={[styles.cornerGuide, styles.guideBL, { borderColor: colors.accent }]} />
+          <View style={[styles.cornerGuide, styles.guideBR, { borderColor: colors.accent }]} />
+
+          <View style={{ width: 68, height: 68, borderRadius: 34, backgroundColor: "rgba(230, 81, 0, 0.2)", justifyContent: "center", alignItems: "center", marginBottom: 12 }}>
+            <AppIcon name="camera" size={32} color={colors.accent} />
+          </View>
+          <Text style={{ color: "#ffffff", fontWeight: "700", fontSize: 16 }}>
+            Prendre une photo du document
+          </Text>
+          <Text style={{ color: "rgba(255, 255, 255, 0.65)", fontSize: 12, marginTop: 4 }}>
+            Appuyez ici pour ouvrir l’appareil photo
+          </Text>
+        </TouchableOpacity>
+
+        {/* Action Choice Buttons */}
+        <View style={{ gap: 10 }}>
+          {/* 1. Camera Button (Primary) */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={handleCapture}
+            disabled={isLoading}
+            style={{
+              backgroundColor: colors.accent,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              paddingVertical: 14,
+              borderRadius: 14,
+              gap: 10,
+              opacity: isLoading ? 0.6 : 1,
+            }}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <>
+                <AppIcon name="camera" size={20} color="#ffffff" />
+                <Text style={{ color: "#ffffff", fontWeight: "700", fontSize: 14.5 }}>
+                  Prendre une photo (Caméra)
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          {/* 2 & 3. Gallery & PDF Buttons (Row) */}
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={handlePickGallery}
+              disabled={isLoading}
+              style={{
+                flex: 1,
+                backgroundColor: "rgba(255, 255, 255, 0.12)",
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                paddingVertical: 12,
+                borderRadius: 12,
+                gap: 8,
+              }}
+            >
+              <AppIcon name="more" size={18} color="#ffffff" />
+              <Text style={{ color: "#ffffff", fontWeight: "600", fontSize: 13 }}>
+                Galerie photos
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={handlePickFile}
+              disabled={isLoading}
+              style={{
+                flex: 1,
+                backgroundColor: "rgba(255, 255, 255, 0.12)",
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                paddingVertical: 12,
+                borderRadius: 12,
+                gap: 8,
+              }}
+            >
+              <AppIcon name="file" size={18} color="#ffffff" />
+              <Text style={{ color: "#ffffff", fontWeight: "600", fontSize: 13 }}>
+                Fichier PDF
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
     </View>
   );
 }
 
-/**
- * 8. DocumentPreviewScreen
- */
 function DocumentPreviewScreen({
   online,
   navigate,
